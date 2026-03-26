@@ -4,12 +4,17 @@ import { kv } from '@vercel/kv';
 const WINDOW_SECONDS = 60;
 const REQUESTS_PER_WINDOW = 10;
 
-const ratelimiter = new Ratelimit({
-  redis: kv,
-  limiter: Ratelimit.slidingWindow(REQUESTS_PER_WINDOW, `${WINDOW_SECONDS} s`),
-  analytics: true,
-  prefix: 'rl:api',
-});
+const kvConfigured =
+  !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
+
+const ratelimiter = kvConfigured
+  ? new Ratelimit({
+      redis: kv,
+      limiter: Ratelimit.slidingWindow(REQUESTS_PER_WINDOW, `${WINDOW_SECONDS} s`),
+      analytics: true,
+      prefix: 'rl:api',
+    })
+  : null;
 
 function getClientIp(request: Request): string {
   const forwardedFor = request.headers.get('x-forwarded-for');
@@ -31,6 +36,10 @@ export type RateLimitCheck = {
 };
 
 export async function checkRateLimit(request: Request, routeKey: string): Promise<RateLimitCheck> {
+  if (!ratelimiter) {
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
   const ip = getClientIp(request);
   const { success, reset } = await ratelimiter.limit(`${routeKey}:${ip}`);
 
