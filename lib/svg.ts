@@ -119,7 +119,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" ` +
-      `width="${svgWidth}" height="${svgHeight}" overflow="visible">`,
+      `width="${svgWidth}" height="${svgHeight}" style="overflow: visible;">`,
     ...parts,
     `</svg>`,
   ].join('\n');
