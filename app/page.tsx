@@ -2,7 +2,6 @@
 
 import { ChangeEvent, FormEvent, useEffect, useReducer } from 'react';
 
-++
 interface PaletteEntry {
   index: number;
   hex: string;
