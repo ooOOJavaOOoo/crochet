@@ -5,9 +5,16 @@ import type { StoredCheckout, StoredPattern } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-04-10' as Stripe.LatestApiVersion,
-});
+function getStripeClient(): Stripe | null {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return null;
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: '2024-04-10' as Stripe.LatestApiVersion,
+  });
+}
 
 const schema = z.object({
   patternId: z.string().min(1),
@@ -27,6 +34,12 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { patternId } = parsed.data;
+
+  const stripe = getStripeClient();
+  if (!stripe) {
+    console.error('[POST /api/checkout] STRIPE_SECRET_KEY is not set');
+    return Response.json({ error: 'Server misconfiguration' }, { status: 500 });
+  }
 
   const stored = await kv.get<StoredPattern>(`pattern:${patternId}`);
   if (!stored) {
