@@ -1,6 +1,6 @@
 import Jimp from 'jimp';
 import type { PaletteEntry, YarnInventoryEntry } from './types';
-import { findNearestYarnColor, getSkeinYardage } from './yarn';
+import { findNearestYarnColor, getFriendlyColorName, getSkeinYardage } from './yarn';
 
 // quantize has no @types package; typed inline
 type RgbPixel = [number, number, number];
@@ -94,14 +94,18 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   // ── Step 5: Build palette entries, optionally snap to yarn colors ─────────
   const palette: PaletteEntry[] = rawPalette.map(([r, g, b], i) => {
     let hex = rgbToHex(r, g, b);
+    let name: string | undefined;
     let yarnBrand: string | undefined;
     let yarnColorName: string | undefined;
 
     if (brandId) {
       const matched = findNearestYarnColor(hex, brandId);
       hex           = matched.hex;
+      name          = matched.name;
       yarnBrand     = matched.brand;
       yarnColorName = matched.name;
+    } else {
+      name = getFriendlyColorName(hex);
     }
 
     return {
@@ -109,6 +113,7 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
       hex,
       symbol:    String.fromCharCode(65 + i), // A, B, C … L
       pixelCount: 0,                          // filled in step 8
+      name,
       yarnBrand,
       yarnColorName,
     };

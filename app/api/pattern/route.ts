@@ -9,6 +9,7 @@ import type { PatternData, StoredPattern } from '@/lib/types';
 import { type QuantizeResult } from '@/lib/pattern';
 import { generateTitle } from '@/lib/prompts/titleGenerator';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
+import { getFriendlyColorName } from '@/lib/yarn';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -65,7 +66,7 @@ export async function POST(request: Request): Promise<Response> {
     const patternId = generatePatternId();
 
     const colorNames = rawPattern.palette.map(
-      (p) => p.yarnColorName ?? p.name ?? p.hex,
+      (p) => p.yarnColorName ?? p.name ?? getFriendlyColorName(p.hex),
     );
     const { title } = await generateTitle({ colorNames });
 

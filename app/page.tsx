@@ -17,14 +17,8 @@ interface PreviewData {
     yarnBrand?: string;
     yarnColorName?: string;
   }>;
-  yarnSummary: Array<{
-    symbol: string;
-    hex: string;
-    yardsNeeded: number;
-    skeinsNeeded: number;
-    yarnBrand?: string;
-    yarnColorName?: string;
-  }>;
+  totalLegendCount: number;
+  hiddenLegendCount: number;
   totalRows: number;
   isWatermarked: boolean;
 }
@@ -706,6 +700,12 @@ export default function HomePage() {
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="mb-3 text-base font-semibold">Color Legend</h3>
+                  <p className="mb-4 text-sm text-slate-600">
+                    Preview includes {state.previewData.colorLegend.length} of {state.previewData.totalLegendCount} colors.
+                    {state.previewData.hiddenLegendCount > 0
+                      ? ` Purchase the PDF to unlock the remaining ${state.previewData.hiddenLegendCount} colors and full yarn inventory.`
+                      : ' Purchase the PDF to unlock the complete pattern and yarn inventory.'}
+                  </p>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
                       <thead className="bg-slate-50 text-slate-700">
@@ -727,32 +727,6 @@ export default function HomePage() {
                             </td>
                             <td className="px-3 py-2 font-semibold">{entry.symbol}</td>
                             <td className="px-3 py-2">{getYarnDisplayName(entry)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="mb-3 text-base font-semibold">Yarn Inventory</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-slate-700">
-                        <tr>
-                          <th className="px-3 py-2">Symbol</th>
-                          <th className="px-3 py-2">Yarn Color</th>
-                          <th className="px-3 py-2">Yards</th>
-                          <th className="px-3 py-2">Skeins</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.previewData.yarnSummary.map((item, index) => (
-                          <tr key={`${item.symbol}-${item.hex}-${index}`} className="border-t border-slate-100">
-                            <td className="px-3 py-2 font-semibold">{item.symbol}</td>
-                            <td className="px-3 py-2">{getYarnDisplayName(item)}</td>
-                            <td className="px-3 py-2">{item.yardsNeeded.toFixed(1)}</td>
-                            <td className="px-3 py-2">{item.skeinsNeeded}</td>
                           </tr>
                         ))}
                       </tbody>

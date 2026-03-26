@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { kv } from '@vercel/kv';
 import { renderStitchChart } from '@/lib/svg';
+import { getFriendlyColorName } from '@/lib/yarn';
 import type { PatternData, StoredPattern } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -52,38 +53,30 @@ export async function POST(request: Request): Promise<Response> {
     resolvedPatternId = patternData.patternId ?? 'preview';
   }
 
+  const totalLegendCount = patternData.palette.length;
+  const previewLegendCount = Math.max(1, Math.ceil(totalLegendCount / 2));
   const previewSvg = renderStitchChart({
     stitchGrid: patternData.stitchGrid,
     palette: patternData.palette,
     preview: false,
+    legendLimit: previewLegendCount,
   });
 
-  const colorLegend = patternData.palette.map((p) => ({
+  const colorLegend = patternData.palette.slice(0, previewLegendCount).map((p) => ({
     symbol: p.symbol,
     hex: p.hex,
-    name: p.name ?? p.hex,
+    name: p.name ?? p.yarnColorName ?? getFriendlyColorName(p.hex),
     yarnBrand: p.yarnBrand,
     yarnColorName: p.yarnColorName,
   }));
-
-  const yarnSummary = patternData.inventory.map((entry) => {
-    const pal = patternData.palette.find((p) => p.index === entry.paletteIndex);
-    return {
-      symbol: pal?.symbol ?? String(entry.paletteIndex),
-      hex: entry.hex,
-      yardsNeeded: entry.yardsNeeded,
-      skeinsNeeded: entry.skeinsNeeded,
-      yarnBrand: entry.yarnBrand,
-      yarnColorName: entry.yarnColorName,
-    };
-  });
 
   return Response.json({
     patternId: resolvedPatternId,
     title: patternData.title ?? 'Untitled Pattern',
     previewSvg,
     colorLegend,
-    yarnSummary,
+    totalLegendCount,
+    hiddenLegendCount: totalLegendCount - previewLegendCount,
     totalRows: patternData.stitchGrid.length,
     isWatermarked: true,
   });

@@ -16,6 +16,7 @@ export interface SvgChartOptions {
   stitchGrid: number[][];   // [row][col], row 0 = bottom-left
   palette: PaletteEntry[];
   preview?: boolean;        // if true: only render first 20 rows + teaser bar
+  legendLimit?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ function renderLegend(
 // ---------------------------------------------------------------------------
 
 export function renderStitchChart(opts: SvgChartOptions): string {
-  const { stitchGrid, palette, preview = false } = opts;
+  const { stitchGrid, palette, preview = false, legendLimit } = opts;
 
   if (!stitchGrid.length || !stitchGrid[0].length) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 0 0" width="0" height="0"/>`;
@@ -103,7 +104,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
         `</text>`,
     );
   } else {
-    parts.push(renderLegend(palette, svgWidth, chartHeight));
+    const legendPalette = legendLimit === undefined ? palette : palette.slice(0, legendLimit);
+    parts.push(renderLegend(legendPalette, svgWidth, chartHeight));
   }
 
   return [

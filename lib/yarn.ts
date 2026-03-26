@@ -216,6 +216,14 @@ export function findNearestYarnColor(hex: string, brandId?: string): YarnColor {
 }
 
 /**
+ * Resolve a human-friendly color name for any hex color.
+ * Uses nearest yarn color matching across all brands.
+ */
+export function getFriendlyColorName(hex: string): string {
+  return findNearestYarnColor(hex).name;
+}
+
+/**
  * Returns the skein yardage for a brand, or 200 yards as a fallback.
  */
 export function getSkeinYardage(brandId?: string): number {
