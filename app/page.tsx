@@ -1,16 +1,301 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useReducer } from 'react';
+import type { PatternData } from '@/lib/types';
 
-interface PaletteEntry {
-  index: number;
-  hex: string;
-  symbol: string;
-  pixelCount: number;
-  name?: string;
-  yarnBrand?: string;
-  yarnColorName?: string;
+type ImageMode = 'upload' | 'ai';
+type Step = 'image' | 'settings' | 'generating' | 'preview' | 'buying';
+
+interface PreviewData {
+  patternId: string;
+  title: string;
+  previewSvg: string;
+  colorLegend: Array<{
+    symbol: string;
+    hex: string;
+    name?: string;
+    yarnColorName?: string;
+  }>;
+  yarnSummary: Array<{
+    symbol: string;
+    hex: string;
+    yardsNeeded: number;
+    skeinsNeeded: number;
+    yarnBrand?: string;
+    yarnColorName?: string;
+  }>;
+  totalRows: number;
+  isWatermarked: boolean;
 }
+
+interface BlanketPreset {
+  label: string;
+  width: number;
+  height: number;
+}
+
+const BLANKET_PRESETS: BlanketPreset[] = [
+  { label: 'Baby (80 x 100)', width: 80, height: 100 },
+  { label: 'Throw (120 x 160)', width: 120, height: 160 },
+  { label: 'Twin (180 x 220)', width: 180, height: 220 },
+  { label: 'Custom', width: 120, height: 160 },
+];
+
+const YARN_BRANDS = [
+  { value: '', label: 'No preference' },
+  { value: 'red-heart', label: 'Red Heart' },
+  { value: 'bernat', label: 'Bernat' },
+  { value: 'lion-brand', label: 'Lion Brand' },
+  { value: 'caron', label: 'Caron' },
+];
+
+interface State {
+  imageMode: ImageMode;
+  step: Step;
+  imageBase64: string | null;
+  aiPrompt: string;
+  presetIndex: number;
+  gridWidth: number;
+  gridHeight: number;
+  colorCount: number;
+  brandId: string;
+  patternData: PatternData | null;
+  previewData: PreviewData | null;
+  loadingMessage: string | null;
+  error: string | null;
+  toast: string | null;
+}
+
+type Action =
+  | { type: 'SetImageMode'; imageMode: ImageMode }
+  | { type: 'SetStep'; step: Step }
+  | { type: 'SetImageBase64'; imageBase64: string | null }
+  | { type: 'SetAiPrompt'; aiPrompt: string }
+  | { type: 'SetPreset'; presetIndex: number; width: number; height: number }
+  | { type: 'SetGridWidth'; gridWidth: number }
+  | { type: 'SetGridHeight'; gridHeight: number }
+  | { type: 'SetColorCount'; colorCount: number }
+  | { type: 'SetBrandId'; brandId: string }
+  | { type: 'SetPatternData'; patternData: PatternData | null }
+  | { type: 'SetPreviewData'; previewData: PreviewData | null }
+  | { type: 'SetLoadingMessage'; loadingMessage: string | null }
+  | { type: 'SetError'; error: string | null }
+  | { type: 'SetToast'; toast: string | null }
+  | { type: 'Reset' };
+
+const initialPreset = BLANKET_PRESETS[1];
+
+const INITIAL_STATE: State = {
+  imageMode: 'upload',
+  step: 'image',
+  imageBase64: null,
+  aiPrompt: '',
+  presetIndex: 1,
+  gridWidth: initialPreset.width,
+  gridHeight: initialPreset.height,
+  colorCount: 6,
+  brandId: '',
+  patternData: null,
+  previewData: null,
+  loadingMessage: null,
+  error: null,
+  toast: null,
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'SetImageMode':
+      return { ...state, imageMode: action.imageMode };
+    case 'SetStep':
+      return { ...state, step: action.step };
+    case 'SetImageBase64':
+      return { ...state, imageBase64: action.imageBase64, previewData: null, patternData: null };
+    case 'SetAiPrompt':
+      return { ...state, aiPrompt: action.aiPrompt };
+    case 'SetPreset':
+      return {
+        ...state,
+        presetIndex: action.presetIndex,
+        gridWidth: action.width,
+        gridHeight: action.height,
+      };
+    case 'SetGridWidth':
+      return { ...state, gridWidth: action.gridWidth };
+    case 'SetGridHeight':
+      return { ...state, gridHeight: action.gridHeight };
+    case 'SetColorCount':
+      return { ...state, colorCount: action.colorCount };
+    case 'SetBrandId':
+      return { ...state, brandId: action.brandId };
+    case 'SetPatternData':
+      return { ...state, patternData: action.patternData };
+    case 'SetPreviewData':
+      return { ...state, previewData: action.previewData };
+    case 'SetLoadingMessage':
+      return { ...state, loadingMessage: action.loadingMessage };
+    case 'SetError':
+      return { ...state, error: action.error };
+    case 'SetToast':
+      return { ...state, toast: action.toast };
+    case 'Reset':
+      return INITIAL_STATE;
+    default:
+      return state;
+  }
+}
+
+function closestPresetIndex(width: number, height: number): number {
+  let bestIndex = BLANKET_PRESETS.length - 1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < BLANKET_PRESETS.length - 1; i += 1) {
+    const preset = BLANKET_PRESETS[i];
+    const distance = Math.abs(width - preset.width) + Math.abs(height - preset.height);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = i;
+    }
+  }
+
+  return bestDistance <= 12 ? bestIndex : BLANKET_PRESETS.length - 1;
+}
+
+async function getJsonOrThrow<T>(response: Response): Promise<T> {
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error('Invalid response from server.');
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof payload === 'object' &&
+      payload !== null &&
+      'error' in payload &&
+      typeof (payload as { error?: unknown }).error === 'string'
+        ? (payload as { error: string }).error
+        : 'Request failed.';
+    throw new Error(message);
+  }
+
+  return payload as T;
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Unable to read file as data URL.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Unable to read selected file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function getImageAspectRatio(imageBase64: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      if (!image.height) {
+        reject(new Error('Could not determine image dimensions.'));
+        return;
+      }
+      resolve(image.width / image.height);
+    };
+    image.onerror = () => reject(new Error('Could not load image dimensions.'));
+    image.src = imageBase64;
+  });
+}
+
+export default function HomePage() {
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+
+  useEffect(() => {
+    if (!state.toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      dispatch({ type: 'SetToast', toast: null });
+    }, 3500);
+
+    return () => window.clearTimeout(timeout);
+  }, [state.toast]);
+
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      dispatch({ type: 'SetError', error: 'Please choose an image smaller than 10MB.' });
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SetError', error: null });
+      const base64 = await fileToBase64(file);
+      dispatch({ type: 'SetImageBase64', imageBase64: base64 });
+      dispatch({ type: 'SetStep', step: 'settings' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to read selected image.';
+      dispatch({ type: 'SetError', error: message });
+    }
+  };
+
+  const handleGenerateImage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!state.aiPrompt.trim()) {
+      dispatch({ type: 'SetError', error: 'Describe what you want to generate first.' });
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SetError', error: null });
+      dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Generating image with AI...' });
+
+      const res = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: state.aiPrompt.trim() }),
+      });
+
+      const data = await getJsonOrThrow<{ imageBase64: string }>(res);
+      dispatch({ type: 'SetImageBase64', imageBase64: data.imageBase64 });
+      dispatch({ type: 'SetStep', step: 'settings' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Image generation failed.';
+      dispatch({ type: 'SetError', error: message });
+    } finally {
+      dispatch({ type: 'SetLoadingMessage', loadingMessage: null });
+    }
+  };
+
+  const handlePresetChange = (presetIndex: number) => {
+    const preset = BLANKET_PRESETS[presetIndex] ?? BLANKET_PRESETS[BLANKET_PRESETS.length - 1];
+    dispatch({
+      type: 'SetPreset',
+      presetIndex,
+      width: preset.width,
+      height: preset.height,
+    });
+  };
+
+  const handleRecommend = async () => {
+    if (!state.imageBase64) {
+      dispatch({ type: 'SetError', error: 'Please upload or generate an image first.' });
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SetError', error: null });
       dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Getting AI recommendations...' });
 
       const aspectRatio = await getImageAspectRatio(state.imageBase64);
@@ -22,7 +307,8 @@ interface PaletteEntry {
         body: JSON.stringify({
           hexColors,
           aspectRatio,
-          yarnBrand: state.brandId,
+          yarnBrand: state.brandId || undefined,
+          imageDescription: state.aiPrompt || undefined,
         }),
       });
 
@@ -51,8 +337,8 @@ interface PaletteEntry {
       return;
     }
 
-    if (state.gridWidth < 10 || state.gridHeight < 10) {
-      dispatch({ type: 'SetError', error: 'Grid dimensions must be at least 10 x 10.' });
+    if (state.gridWidth < 20 || state.gridHeight < 20) {
+      dispatch({ type: 'SetError', error: 'Grid dimensions must be at least 20 x 20.' });
       return;
     }
 
@@ -127,10 +413,12 @@ interface PaletteEntry {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Tapestry Crochet Pattern Generator</h1>
-            <p className="mt-1 text-sm text-slate-600">Upload or generate an image, tune your settings, then preview and purchase the full PDF.</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Upload or generate an image, tune your settings, then preview and purchase the full PDF.
+            </p>
           </div>
           <button
             type="button"
@@ -140,6 +428,22 @@ interface PaletteEntry {
             Start Over
           </button>
         </div>
+
+        {state.error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{state.error}</div>
+        )}
+
+        {state.toast && (
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {state.toast}
+          </div>
+        )}
+
+        {state.loadingMessage && (
+          <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+            {state.loadingMessage}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <section className="space-y-6">
@@ -242,11 +546,11 @@ interface PaletteEntry {
                       <input
                         id="grid-width"
                         type="number"
-                        min={10}
-                        max={1000}
+                        min={20}
+                        max={432}
                         value={state.gridWidth}
                         onChange={(event) =>
-                          dispatch({ type: 'SetGridWidth', gridWidth: Number(event.target.value) || 10 })
+                          dispatch({ type: 'SetGridWidth', gridWidth: Number(event.target.value) || 20 })
                         }
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                       />
@@ -258,11 +562,11 @@ interface PaletteEntry {
                       <input
                         id="grid-height"
                         type="number"
-                        min={10}
-                        max={1000}
+                        min={20}
+                        max={432}
                         value={state.gridHeight}
                         onChange={(event) =>
-                          dispatch({ type: 'SetGridHeight', gridHeight: Number(event.target.value) || 10 })
+                          dispatch({ type: 'SetGridHeight', gridHeight: Number(event.target.value) || 20 })
                         }
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                       />
@@ -364,8 +668,8 @@ interface PaletteEntry {
                         </tr>
                       </thead>
                       <tbody>
-                        {state.previewData.colorLegend.map((entry) => (
-                          <tr key={`${entry.index}-${entry.hex}`} className="border-t border-slate-100">
+                        {state.previewData.colorLegend.map((entry, index) => (
+                          <tr key={`${entry.symbol}-${entry.hex}-${index}`} className="border-t border-slate-100">
                             <td className="px-3 py-2">
                               <span
                                 className="inline-block h-5 w-5 rounded border border-slate-300"
@@ -396,12 +700,12 @@ interface PaletteEntry {
                         </tr>
                       </thead>
                       <tbody>
-                        {state.previewData.yarnSummary.map((item) => (
-                          <tr key={`${item.paletteIndex}-${item.hex}`} className="border-t border-slate-100">
+                        {state.previewData.yarnSummary.map((item, index) => (
+                          <tr key={`${item.symbol}-${item.hex}-${index}`} className="border-t border-slate-100">
                             <td className="px-3 py-2 font-semibold">{item.symbol}</td>
                             <td className="px-3 py-2 font-mono uppercase">{item.hex}</td>
                             <td className="px-3 py-2">{item.yardsNeeded.toFixed(1)}</td>
-                            <td className="px-3 py-2">{item.skeinsNeeded.toFixed(2)}</td>
+                            <td className="px-3 py-2">{item.skeinsNeeded}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -409,55 +713,19 @@ interface PaletteEntry {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-300 bg-slate-100 p-5 shadow-sm">
-                  <p className="text-sm text-slate-700">
-                    Showing rows 1-20 of {state.previewData.totalRows} - Full pattern includes stitch chart, row instructions &amp; inventory PDF
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleCheckout}
-                    disabled={state.loadingMessage !== null || state.step === 'buying'}
-                    className="mt-4 w-full rounded-lg bg-emerald-600 px-5 py-3 text-lg font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Buy Full PDF - $4.99
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCheckout}
+                  disabled={state.loadingMessage !== null || state.step === 'buying'}
+                  className="w-full rounded-xl bg-emerald-600 px-6 py-4 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Buy PDF Pattern
+                </button>
               </>
-            )}
-
-            {state.error && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{state.error}</div>
             )}
           </section>
         </div>
       </main>
-
-      {state.loadingMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-xl">
-            <svg
-              className="mx-auto h-8 w-8 animate-spin text-violet-700"
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-              <path
-                className="opacity-90"
-                fill="currentColor"
-                d="M22 12a10 10 0 0 0-10-10v3a7 7 0 0 1 7 7h3Z"
-              />
-            </svg>
-            <p className="mt-3 text-sm font-medium text-slate-700">{state.loadingMessage}</p>
-          </div>
-        </div>
-      )}
-
-      {state.toast && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-violet-700 px-4 py-3 text-sm font-medium text-white shadow-lg">
-          {state.toast}
-        </div>
-      )}
     </div>
   );
 }
