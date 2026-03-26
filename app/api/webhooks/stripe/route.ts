@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { SignJWT } from 'jose';
 import { kv } from '@vercel/kv';
+import { Resend } from 'resend';
 import type { StoredCheckout, StoredDownloadToken } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -112,6 +113,33 @@ export async function POST(request: Request): Promise<Response> {
     kv.set(`download:${jti}`, downloadTokenRecord, { ex: 86400 }),          // 24 hours
     kv.set(`checkout:${session.id}`, updatedCheckout, { ex: 86400 }),       // 24 hours
   ]);
+
+  // Send download link to customer email (non-fatal)
+  const customerEmail = session.customer_details?.email;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.FROM_EMAIL;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+
+  if (customerEmail && resendApiKey && fromEmail) {
+    const downloadUrl = `${appUrl}/api/download/${token}`;
+    const resend = new Resend(resendApiKey);
+
+    try {
+      await resend.emails.send({
+        from: fromEmail,
+        to: customerEmail,
+        subject: 'Your crochet pattern is ready to download',
+        html: `
+          <p>Thank you for your purchase!</p>
+          <p>Your crochet pattern PDF is ready. Use the link below to download it:</p>
+          <p><a href="${downloadUrl}">Download your pattern</a></p>
+          <p>This link is valid for 24 hours and can only be used once.</p>
+        `,
+      });
+    } catch (err) {
+      console.error('[stripe webhook] Failed to send download email', err);
+    }
+  }
 
   return Response.json({ received: true });
 }

@@ -54,6 +54,7 @@ interface State {
   step: Step;
   imageBase64: string | null;
   aiPrompt: string;
+  recommendPrompt: string;
   presetIndex: number;
   gridWidth: number;
   gridHeight: number;
@@ -71,6 +72,7 @@ type Action =
   | { type: 'SetStep'; step: Step }
   | { type: 'SetImageBase64'; imageBase64: string | null }
   | { type: 'SetAiPrompt'; aiPrompt: string }
+  | { type: 'SetRecommendPrompt'; recommendPrompt: string }
   | { type: 'SetPreset'; presetIndex: number; width: number; height: number }
   | { type: 'SetGridWidth'; gridWidth: number }
   | { type: 'SetGridHeight'; gridHeight: number }
@@ -90,6 +92,7 @@ const INITIAL_STATE: State = {
   step: 'image',
   imageBase64: null,
   aiPrompt: '',
+  recommendPrompt: '',
   presetIndex: 1,
   gridWidth: initialPreset.width,
   gridHeight: initialPreset.height,
@@ -112,6 +115,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, imageBase64: action.imageBase64, previewData: null, patternData: null };
     case 'SetAiPrompt':
       return { ...state, aiPrompt: action.aiPrompt };
+    case 'SetRecommendPrompt':
+      return { ...state, recommendPrompt: action.recommendPrompt };
     case 'SetPreset':
       return {
         ...state,
@@ -142,22 +147,6 @@ function reducer(state: State, action: Action): State {
     default:
       return state;
   }
-}
-
-function closestPresetIndex(width: number, height: number): number {
-  let bestIndex = BLANKET_PRESETS.length - 1;
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  for (let i = 0; i < BLANKET_PRESETS.length - 1; i += 1) {
-    const preset = BLANKET_PRESETS[i];
-    const distance = Math.abs(width - preset.width) + Math.abs(height - preset.height);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestIndex = i;
-    }
-  }
-
-  return bestDistance <= 12 ? bestIndex : BLANKET_PRESETS.length - 1;
 }
 
 async function getJsonOrThrow<T>(response: Response): Promise<T> {
@@ -210,6 +199,22 @@ async function getImageAspectRatio(imageBase64: string): Promise<number> {
     image.onerror = () => reject(new Error('Could not load image dimensions.'));
     image.src = imageBase64;
   });
+}
+
+function getGeneratedImageFromPayload(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Invalid image response from server.');
+  }
+
+  const imagePayload = payload as { image?: unknown; imageBase64?: unknown };
+  if (typeof imagePayload.image === 'string' && imagePayload.image.length > 0) {
+    return imagePayload.image;
+  }
+  if (typeof imagePayload.imageBase64 === 'string' && imagePayload.imageBase64.length > 0) {
+    return imagePayload.imageBase64;
+  }
+
+  throw new Error('Image response did not include image data.');
 }
 
 export default function HomePage() {
@@ -267,8 +272,8 @@ export default function HomePage() {
         body: JSON.stringify({ prompt: state.aiPrompt.trim() }),
       });
 
-      const data = await getJsonOrThrow<{ imageBase64: string }>(res);
-      dispatch({ type: 'SetImageBase64', imageBase64: data.imageBase64 });
+      const data = await getJsonOrThrow<{ image?: string; imageBase64?: string }>(res);
+      dispatch({ type: 'SetImageBase64', imageBase64: getGeneratedImageFromPayload(data) });
       dispatch({ type: 'SetStep', step: 'settings' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Image generation failed.';
@@ -289,42 +294,39 @@ export default function HomePage() {
   };
 
   const handleRecommend = async () => {
-    if (!state.imageBase64) {
-      dispatch({ type: 'SetError', error: 'Please upload or generate an image first.' });
+    if (!state.recommendPrompt.trim()) {
+      dispatch({ type: 'SetError', error: 'Enter a recommendation prompt first.' });
       return;
     }
 
     try {
       dispatch({ type: 'SetError', error: null });
-      dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Getting AI recommendations...' });
+      dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Applying AI recommendation...' });
 
-      const aspectRatio = await getImageAspectRatio(state.imageBase64);
-      const hexColors = state.patternData?.palette.map((entry) => entry.hex) ?? [];
+      const sourceImage = state.imageBase64 ?? undefined;
+      const aspectRatio = sourceImage ? await getImageAspectRatio(sourceImage) : undefined;
 
-      const res = await fetch('/api/recommend', {
+      const res = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hexColors,
+          prompt: state.recommendPrompt.trim(),
+          sourceImage,
           aspectRatio,
-          yarnBrand: state.brandId || undefined,
-          imageDescription: state.aiPrompt || undefined,
         }),
       });
 
-      const data = await getJsonOrThrow<{
-        size: { gridWidth: number; gridHeight: number; name: string };
-        title?: string;
-      }>(res);
-
-      const nextWidth = data.size.gridWidth;
-      const nextHeight = data.size.gridHeight;
-      const nextPreset = closestPresetIndex(nextWidth, nextHeight);
-
-      dispatch({ type: 'SetPreset', presetIndex: nextPreset, width: nextWidth, height: nextHeight });
-      dispatch({ type: 'SetToast', toast: `AI recommends: ${data.size.name}` });
+      const data = await getJsonOrThrow<{ image?: string; imageBase64?: string }>(res);
+      dispatch({ type: 'SetImageBase64', imageBase64: getGeneratedImageFromPayload(data) });
+      dispatch({ type: 'SetStep', step: 'settings' });
+      dispatch({
+        type: 'SetToast',
+        toast: sourceImage
+          ? 'AI recommendation applied to your uploaded image.'
+          : 'AI recommendation created a custom image.',
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to fetch AI recommendations.';
+      const message = error instanceof Error ? error.message : 'Failed to apply AI recommendation.';
       dispatch({ type: 'SetError', error: message });
     } finally {
       dispatch({ type: 'SetLoadingMessage', loadingMessage: null });
@@ -607,13 +609,30 @@ export default function HomePage() {
                   </select>
                 </div>
 
+                <div>
+                  <label htmlFor="recommend-prompt" className="mb-1 block text-sm font-medium text-slate-700">
+                    AI recommendation prompt
+                  </label>
+                  <textarea
+                    id="recommend-prompt"
+                    rows={3}
+                    value={state.recommendPrompt}
+                    onChange={(event) => dispatch({ type: 'SetRecommendPrompt', recommendPrompt: event.target.value })}
+                    placeholder="Example: Turn this into a watercolor style portrait with a soft forest background"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    If an image is uploaded, AI will alter it using this prompt. If not, AI will create a custom image.
+                  </p>
+                </div>
+
                 <button
                   type="button"
                   onClick={handleRecommend}
-                  disabled={!state.imageBase64 || state.loadingMessage !== null}
+                  disabled={!state.recommendPrompt.trim() || state.loadingMessage !== null}
                   className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Get AI Recommendations
+                  Generate AI Recommendation
                 </button>
               </div>
             </div>
