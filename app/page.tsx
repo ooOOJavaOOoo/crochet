@@ -633,11 +633,28 @@ export default function HomePage() {
               <h2 className="mb-4 text-lg font-semibold">Preview Area</h2>
 
               {state.imageBase64 ? (
-                <img
-                  src={state.imageBase64}
-                  alt="Source preview"
-                  className="h-64 w-full rounded-lg border border-slate-200 object-contain"
-                />
+                <div
+                  className="relative h-64 w-full overflow-hidden rounded-lg border border-slate-200"
+                  style={{
+                    backgroundImage: `url(${state.imageBase64})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    imageRendering: 'pixelated',
+                  }}
+                  aria-label="Source preview"
+                  role="img"
+                >
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage:
+                        'linear-gradient(to right, rgba(15,23,42,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.22) 1px, transparent 1px)',
+                      backgroundSize: '12px 12px',
+                      backgroundPosition: '0 0, 0 0',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
                   Your uploaded or AI-generated image preview appears here.
