@@ -196,6 +196,33 @@ export function findNearestYarnColor(hex: string, brandId?: string): YarnColor {
   // Fallback: if filtered list is empty (unknown brandId), use all colors
   const pool = candidates.length > 0 ? candidates : YARN_COLORS;
 
+  return findNearestFromPool(hex, pool);
+}
+
+export function getYarnColorsByBrand(brandId: string): YarnColor[] {
+  return YARN_COLORS.filter((color) => color.brandId === brandId);
+}
+
+export function findNearestYarnColorFromIds(hex: string, colorIds: string[]): YarnColor | null {
+  if (colorIds.length === 0) {
+    return null;
+  }
+
+  const selectedIds = new Set(colorIds);
+  const pool = YARN_COLORS.filter((color) => selectedIds.has(color.id));
+
+  if (pool.length === 0) {
+    return null;
+  }
+
+  return findNearestFromPool(hex, pool);
+}
+
+function findNearestFromPool(hex: string, pool: YarnColor[]): YarnColor {
+  if (pool.length === 0) {
+    throw new Error('Cannot find nearest yarn color from an empty pool.');
+  }
+
   const lab = hexToLab(hex);
   let best = pool[0];
   let bestDelta = Infinity;

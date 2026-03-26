@@ -20,6 +20,7 @@ const schema = z.object({
   gridHeight: z.number().int().min(20).max(432),
   colorCount: z.number().int().min(2).max(12),
   brandId: z.string().optional(),
+  selectedYarnColorIds: z.array(z.string().min(1)).optional(),
 });
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -42,7 +43,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const { imageBase64, gridWidth, gridHeight, colorCount, brandId } = parsed.data;
+  const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds } = parsed.data;
 
   // Strip optional data URI prefix and validate decoded size
   const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -61,6 +62,7 @@ export async function POST(request: Request): Promise<Response> {
       gridHeight,
       colorCount,
       brandId,
+      selectedYarnColorIds,
     });
 
     const patternId = generatePatternId();

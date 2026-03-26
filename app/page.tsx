@@ -29,6 +29,12 @@ interface BlanketPreset {
   height: number;
 }
 
+interface YarnColorOption {
+  id: string;
+  name: string;
+  hex: string;
+}
+
 const BLANKET_PRESETS: BlanketPreset[] = [
   { label: 'Baby (80 x 100)', width: 80, height: 100 },
   { label: 'Throw (120 x 160)', width: 120, height: 160 },
@@ -55,6 +61,8 @@ interface State {
   gridHeight: number;
   colorCount: number;
   brandId: string;
+  availableYarnColors: YarnColorOption[];
+  selectedYarnColorIds: string[];
   patternData: PatternData | null;
   previewData: PreviewData | null;
   loadingMessage: string | null;
@@ -73,6 +81,8 @@ type Action =
   | { type: 'SetGridHeight'; gridHeight: number }
   | { type: 'SetColorCount'; colorCount: number }
   | { type: 'SetBrandId'; brandId: string }
+  | { type: 'SetAvailableYarnColors'; colors: YarnColorOption[] }
+  | { type: 'SetSelectedYarnColorIds'; colorIds: string[] }
   | { type: 'SetPatternData'; patternData: PatternData | null }
   | { type: 'SetPreviewData'; previewData: PreviewData | null }
   | { type: 'SetLoadingMessage'; loadingMessage: string | null }
@@ -93,6 +103,8 @@ const INITIAL_STATE: State = {
   gridHeight: initialPreset.height,
   colorCount: 6,
   brandId: '',
+  availableYarnColors: [],
+  selectedYarnColorIds: [],
   patternData: null,
   previewData: null,
   loadingMessage: null,
@@ -126,7 +138,16 @@ function reducer(state: State, action: Action): State {
     case 'SetColorCount':
       return { ...state, colorCount: action.colorCount };
     case 'SetBrandId':
-      return { ...state, brandId: action.brandId };
+      return {
+        ...state,
+        brandId: action.brandId,
+        availableYarnColors: [],
+        selectedYarnColorIds: [],
+      };
+    case 'SetAvailableYarnColors':
+      return { ...state, availableYarnColors: action.colors };
+    case 'SetSelectedYarnColorIds':
+      return { ...state, selectedYarnColorIds: action.colorIds };
     case 'SetPatternData':
       return { ...state, patternData: action.patternData };
     case 'SetPreviewData':
@@ -240,6 +261,36 @@ export default function HomePage() {
 
     return () => window.clearTimeout(timeout);
   }, [state.toast]);
+
+  useEffect(() => {
+    if (!state.brandId) {
+      dispatch({ type: 'SetAvailableYarnColors', colors: [] });
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadColors = async () => {
+      try {
+        const res = await fetch(`/api/yarn/colors?brandId=${encodeURIComponent(state.brandId)}`, {
+          signal: controller.signal,
+        });
+        const data = await getJsonOrThrow<{ colors: YarnColorOption[] }>(res);
+        dispatch({ type: 'SetAvailableYarnColors', colors: data.colors });
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        dispatch({ type: 'SetAvailableYarnColors', colors: [] });
+        const message = error instanceof Error ? error.message : 'Failed to load yarn colors.';
+        dispatch({ type: 'SetError', error: message });
+      }
+    };
+
+    void loadColors();
+
+    return () => controller.abort();
+  }, [state.brandId]);
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -367,6 +418,8 @@ export default function HomePage() {
           gridHeight: state.gridHeight,
           colorCount: state.colorCount,
           brandId: state.brandId || undefined,
+          selectedYarnColorIds:
+            state.selectedYarnColorIds.length > 0 ? state.selectedYarnColorIds : undefined,
         }),
       });
 
@@ -610,6 +663,33 @@ export default function HomePage() {
                     ))}
                   </select>
                 </div>
+
+                {state.brandId && (
+                  <div>
+                    <label htmlFor="brand-colors" className="mb-1 block text-sm font-medium text-slate-700">
+                      On-hand yarn colors (optional)
+                    </label>
+                    <select
+                      id="brand-colors"
+                      multiple
+                      value={state.selectedYarnColorIds}
+                      onChange={(event) => {
+                        const selected = Array.from(event.target.selectedOptions, (option) => option.value);
+                        dispatch({ type: 'SetSelectedYarnColorIds', colorIds: selected });
+                      }}
+                      className="h-36 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                    >
+                      {state.availableYarnColors.map((color) => (
+                        <option key={color.id} value={color.id}>
+                          {`${color.name} (${color.hex})`}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Choose one or more colors to limit the pattern to what you already have.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="recommend-prompt" className="mb-1 block text-sm font-medium text-slate-700">

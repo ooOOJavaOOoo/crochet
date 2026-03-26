@@ -1,6 +1,11 @@
 import Jimp from 'jimp';
 import type { PaletteEntry, YarnInventoryEntry } from './types';
-import { findNearestYarnColor, getFriendlyColorName, getSkeinYardage } from './yarn';
+import {
+  findNearestYarnColor,
+  findNearestYarnColorFromIds,
+  getFriendlyColorName,
+  getSkeinYardage,
+} from './yarn';
 
 // quantize has no @types package; typed inline
 type RgbPixel = [number, number, number];
@@ -30,6 +35,7 @@ export interface QuantizeOptions {
   gridHeight: number;   // target stitch rows
   colorCount: number;   // 2–12
   brandId?: string;     // for yarn color snapping
+  selectedYarnColorIds?: string[];
 }
 
 export interface QuantizeResult {
@@ -70,7 +76,7 @@ function euclidean(a: RgbPixel, b: RgbPixel): number {
 // ---------------------------------------------------------------------------
 
 export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResult> {
-  const { imageBase64, gridWidth, gridHeight, colorCount, brandId } = opts;
+  const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds } = opts;
 
   // ── Step 1: Decode base64 → Buffer ────────────────────────────────────────
   const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -88,7 +94,15 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   }
 
   // ── Step 4: Quantize ──────────────────────────────────────────────────────
-  const colormap = quantize(pixels, colorCount);
+  const uniqueSelectedColorIds = selectedYarnColorIds
+    ? Array.from(new Set(selectedYarnColorIds))
+    : [];
+  const effectiveColorCount =
+    uniqueSelectedColorIds.length > 0
+      ? Math.min(colorCount, uniqueSelectedColorIds.length)
+      : colorCount;
+
+  const colormap = quantize(pixels, effectiveColorCount);
   const rawPalette: RgbPixel[] = colormap ? colormap.palette() : [[0, 0, 0]];
 
   // ── Step 5: Build palette entries, optionally snap to yarn colors ─────────
@@ -98,7 +112,15 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
     let yarnBrand: string | undefined;
     let yarnColorName: string | undefined;
 
-    if (brandId) {
+    if (uniqueSelectedColorIds.length > 0) {
+      const matched = findNearestYarnColorFromIds(hex, uniqueSelectedColorIds);
+      if (matched) {
+        hex           = matched.hex;
+        name          = matched.name;
+        yarnBrand     = matched.brand;
+        yarnColorName = matched.name;
+      }
+    } else if (brandId) {
       const matched = findNearestYarnColor(hex, brandId);
       hex           = matched.hex;
       name          = matched.name;
