@@ -55,7 +55,7 @@ export async function POST(request: Request): Promise<Response> {
   const previewSvg = renderStitchChart({
     stitchGrid: patternData.stitchGrid,
     palette: patternData.palette,
-    preview: true,
+    preview: false,
   });
 
   const colorLegend = patternData.palette.map((p) => ({

@@ -7,7 +7,6 @@ import type { PaletteEntry } from './types';
 const CELL_SIZE     = 8;   // pixels per stitch cell
 const LEGEND_HEIGHT = 60;  // pixels reserved below the chart
 const ENTRY_W       = 80;  // pixels per legend entry (swatch + symbol + hex)
-const ROW_LABEL_INTERVAL = 10;
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -89,16 +88,6 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       const hex  = palette[pIdx]?.hex ?? '#CCCCCC';
       parts.push(
         `<rect x="${col * CELL_SIZE}" y="${y}" width="${CELL_SIZE}" height="${CELL_SIZE}" fill="${esc(hex)}"/>`,
-      );
-    }
-  }
-
-  // ── Row number labels (every 10th row) ───────────────────────────────────
-  for (let row = 0; row < renderRows; row++) {
-    if (row % ROW_LABEL_INTERVAL === 0) {
-      const y = (renderRows - 1 - row) * CELL_SIZE;
-      parts.push(
-        `<text x="-2" y="${y + CELL_SIZE}" font-family="sans-serif" font-size="6" text-anchor="end" fill="#666">${row}</text>`,
       );
     }
   }

@@ -660,17 +660,13 @@ export default function HomePage() {
               <h2 className="mb-4 text-lg font-semibold">Preview Area</h2>
 
               {state.imageBase64 ? (
-                <div
-                  className="relative h-64 w-full overflow-hidden rounded-lg border border-slate-200"
-                  style={{
-                    backgroundImage: `url(${state.imageBase64})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    imageRendering: 'pixelated',
-                  }}
-                  aria-label="Source preview"
-                  role="img"
-                >
+                <div className="relative h-64 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                  <img
+                    src={state.imageBase64}
+                    alt="Source preview"
+                    className="h-full w-full object-contain"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
                   <div
                     className="absolute inset-0"
                     style={{
@@ -693,10 +689,19 @@ export default function HomePage() {
               <>
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="mb-3 text-base font-semibold">{state.previewData.title}</h3>
-                  <div
-                    className="overflow-auto rounded-lg border border-slate-200 bg-white p-3"
-                    dangerouslySetInnerHTML={{ __html: state.previewData.previewSvg }}
-                  />
+                  <div className="relative h-[460px] overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div
+                      className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
+                      dangerouslySetInnerHTML={{ __html: state.previewData.previewSvg }}
+                    />
+                    {state.previewData.isWatermarked && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div className="rotate-[-18deg] text-3xl font-black uppercase tracking-[0.18em] text-slate-900/18 sm:text-5xl">
+                          Preview Only
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
