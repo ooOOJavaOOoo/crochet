@@ -62,6 +62,8 @@ export async function POST(request: Request): Promise<Response> {
     symbol: p.symbol,
     hex: p.hex,
     name: p.name ?? p.hex,
+    yarnBrand: p.yarnBrand,
+    yarnColorName: p.yarnColorName,
   }));
 
   const yarnSummary = patternData.inventory.map((entry) => {

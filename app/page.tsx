@@ -14,6 +14,7 @@ interface PreviewData {
     symbol: string;
     hex: string;
     name?: string;
+    yarnBrand?: string;
     yarnColorName?: string;
   }>;
   yarnSummary: Array<{
@@ -219,6 +220,20 @@ function getGeneratedImageFromPayload(payload: unknown): string {
 
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+
+  const getYarnDisplayName = (item: {
+    yarnBrand?: string;
+    yarnColorName?: string;
+    name?: string;
+  }): string => {
+    if (item.yarnBrand && item.yarnColorName) {
+      return `${item.yarnBrand} - ${item.yarnColorName}`;
+    }
+    if (item.yarnColorName) {
+      return item.yarnColorName;
+    }
+    return item.name ?? 'Unnamed color';
+  };
 
   useEffect(() => {
     if (!state.toast) {
@@ -485,13 +500,6 @@ export default function HomePage() {
                     onChange={handleFileUpload}
                     className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
                   />
-                  {state.imageBase64 && (
-                    <img
-                      src={state.imageBase64}
-                      alt="Selected source"
-                      className="h-48 w-full rounded-lg border border-slate-200 object-cover"
-                    />
-                  )}
                 </div>
               ) : (
                 <form onSubmit={handleGenerateImage} className="space-y-3">
@@ -699,8 +707,7 @@ export default function HomePage() {
                         <tr>
                           <th className="px-3 py-2">Color</th>
                           <th className="px-3 py-2">Symbol</th>
-                          <th className="px-3 py-2">Name</th>
-                          <th className="px-3 py-2">Hex</th>
+                          <th className="px-3 py-2">Yarn Color</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -714,8 +721,7 @@ export default function HomePage() {
                               />
                             </td>
                             <td className="px-3 py-2 font-semibold">{entry.symbol}</td>
-                            <td className="px-3 py-2">{entry.yarnColorName || entry.name || '-'}</td>
-                            <td className="px-3 py-2 font-mono uppercase">{entry.hex}</td>
+                            <td className="px-3 py-2">{getYarnDisplayName(entry)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -730,7 +736,7 @@ export default function HomePage() {
                       <thead className="bg-slate-50 text-slate-700">
                         <tr>
                           <th className="px-3 py-2">Symbol</th>
-                          <th className="px-3 py-2">Hex</th>
+                          <th className="px-3 py-2">Yarn Color</th>
                           <th className="px-3 py-2">Yards</th>
                           <th className="px-3 py-2">Skeins</th>
                         </tr>
@@ -739,7 +745,7 @@ export default function HomePage() {
                         {state.previewData.yarnSummary.map((item, index) => (
                           <tr key={`${item.symbol}-${item.hex}-${index}`} className="border-t border-slate-100">
                             <td className="px-3 py-2 font-semibold">{item.symbol}</td>
-                            <td className="px-3 py-2 font-mono uppercase">{item.hex}</td>
+                            <td className="px-3 py-2">{getYarnDisplayName(item)}</td>
                             <td className="px-3 py-2">{item.yardsNeeded.toFixed(1)}</td>
                             <td className="px-3 py-2">{item.skeinsNeeded}</td>
                           </tr>

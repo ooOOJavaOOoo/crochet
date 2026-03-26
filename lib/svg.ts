@@ -110,7 +110,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       `<text x="${svgWidth / 2}" y="${chartHeight + LEGEND_HEIGHT / 2 + 6}" ` +
         `font-family="sans-serif" font-size="13" font-weight="bold" fill="#888" ` +
         `text-anchor="middle">` +
-        `Purchase to see all ${totalRows} rows` +
+        `Pattern preview (${Math.min(renderRows, totalRows)} of ${totalRows} rows shown)` +
         `</text>`,
     );
   } else {
