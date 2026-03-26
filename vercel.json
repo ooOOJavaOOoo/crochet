@@ -1,0 +1,19 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-blobs",
+      "schedule": "0 3 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/image/route.ts": { "maxDuration": 60 },
+    "app/api/pattern/route.ts": { "maxDuration": 60 },
+    "app/api/chat/route.ts": { "maxDuration": 30 },
+    "app/api/recommend/route.ts": { "maxDuration": 30 },
+    "app/api/preview/route.ts": { "maxDuration": 30 },
+    "app/api/download/[token]/route.ts": { "maxDuration": 30 },
+    "app/api/checkout/route.ts": { "maxDuration": 15 },
+    "app/api/webhooks/stripe/route.ts": { "maxDuration": 15 },
+    "app/api/tokens/route.ts": { "maxDuration": 10 }
+  }
+}
