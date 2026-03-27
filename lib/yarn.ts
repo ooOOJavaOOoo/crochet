@@ -31,6 +31,7 @@ export const SKEIN_YARDAGES: Record<string, number> = {
   'red-heart': 364,
   'caron': 315,
   'paintbox': 273,
+  'i-love-this-yarn': 380,
 };
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,17 @@ function mkPaintbox(name: string, hex: string): YarnColor {
     brandId: 'paintbox',
     hex,
     skeinYardage: 273,
+  };
+}
+
+function mkILoveThisYarn(name: string, hex: string): YarnColor {
+  return {
+    id: `i-love-this-yarn-${name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
+    name,
+    brand: 'I Love this Yarn',
+    brandId: 'i-love-this-yarn',
+    hex,
+    skeinYardage: 380,
   };
 }
 
@@ -281,6 +293,49 @@ export const YARN_COLORS: YarnColor[] = [
   mkPaintbox('Aquamarine',        '#65C6B9'),
   mkPaintbox('Denim Blue',        '#3569A5'),
   mkPaintbox('Royal Purple',      '#4D2E8A'),
+
+  // ── I Love this Yarn ──────────────────────────────────────────────────────
+  mkILoveThisYarn('White',           '#FFFFFF'),
+  mkILoveThisYarn('Black',           '#0A0A0A'),
+  mkILoveThisYarn('Light Grey',      '#D3D3D3'),
+  mkILoveThisYarn('Charcoal',        '#3F4348'),
+  mkILoveThisYarn('Silver',          '#C0C0C0'),
+  mkILoveThisYarn('Cream',           '#FFFDD0'),
+  mkILoveThisYarn('Ivory',           '#F0F8FF'),
+  mkILoveThisYarn('Beige',           '#F5F5DC'),
+  mkILoveThisYarn('Tan',             '#D2B48C'),
+  mkILoveThisYarn('Gold',            '#FFD700'),
+  mkILoveThisYarn('Red',             '#FF0000'),
+  mkILoveThisYarn('Dark Red',        '#8B0000'),
+  mkILoveThisYarn('Crimson',         '#DC143C'),
+  mkILoveThisYarn('Coral',           '#FF7F50'),
+  mkILoveThisYarn('Orange',          '#FFA500'),
+  mkILoveThisYarn('Dark Orange',     '#FF8C00'),
+  mkILoveThisYarn('Peach',           '#FFDAB9'),
+  mkILoveThisYarn('Yellow',          '#FFFF00'),
+  mkILoveThisYarn('Lime',            '#00FF00'),
+  mkILoveThisYarn('Green',           '#008000'),
+  mkILoveThisYarn('Dark Green',      '#006400'),
+  mkILoveThisYarn('Forest Green',    '#228B22'),
+  mkILoveThisYarn('Sea Green',       '#2E8B57'),
+  mkILoveThisYarn('Teal',            '#008080'),
+  mkILoveThisYarn('Cyan',            '#00FFFF'),
+  mkILoveThisYarn('Sky Blue',        '#87CEEB'),
+  mkILoveThisYarn('Blue',            '#0000FF'),
+  mkILoveThisYarn('Navy',            '#000080'),
+  mkILoveThisYarn('Royal Blue',      '#4169E1'),
+  mkILoveThisYarn('Lavender',        '#E6E6FA'),
+  mkILoveThisYarn('Purple',          '#800080'),
+  mkILoveThisYarn('Violet',          '#EE82EE'),
+  mkILoveThisYarn('Plum',            '#DDA0DD'),
+  mkILoveThisYarn('Magenta',         '#FF00FF'),
+  mkILoveThisYarn('Pink',            '#FFC0CB'),
+  mkILoveThisYarn('Hot Pink',        '#FF69B4'),
+  mkILoveThisYarn('Deep Pink',       '#FF1493'),
+  mkILoveThisYarn('Rose',            '#FF007F'),
+  mkILoveThisYarn('Brown',           '#A52A2A'),
+  mkILoveThisYarn('Chocolate',       '#D2691E'),
+  mkILoveThisYarn('Maroon',          '#800000'),
 ];
 
 // ---------------------------------------------------------------------------
