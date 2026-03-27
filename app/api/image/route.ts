@@ -1,6 +1,10 @@
 import { generateImage } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { getGoogleApiKey, IMAGEN_FAST_MODEL } from '@/lib/models';
+import { createVertex } from '@ai-sdk/google-vertex';
+import {
+  getGoogleVertexLocation,
+  getGoogleVertexProject,
+  IMAGEN_FAST_MODEL,
+} from '@/lib/models';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 
 export async function POST(request: Request) {
@@ -20,15 +24,17 @@ export async function POST(request: Request) {
       });
     }
 
-    const apiKey = getGoogleApiKey();
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'Google API key is not configured.' }), {
+    const project = getGoogleVertexProject();
+    if (!project) {
+      return new Response(JSON.stringify({ error: 'Google Vertex project is not configured.' }), {
         status: 500,
         headers: { 'content-type': 'application/json' },
       });
     }
 
-    const google = createGoogleGenerativeAI({ apiKey });
+    const location = getGoogleVertexLocation();
+
+    const vertex = createVertex({ project, location });
 
     const imagePrompt = sourceImage
       ? {
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
       : prompt;
 
     const result = await generateImage({
-      model: google.image(IMAGEN_FAST_MODEL),
+      model: vertex.image(IMAGEN_FAST_MODEL),
       prompt: imagePrompt,
       n: 1,
       ...(aspectRatio ? { aspectRatio } : {}),
@@ -52,6 +58,8 @@ export async function POST(request: Request) {
         image: dataUrl,
         mediaType: image.mediaType,
         model: IMAGEN_FAST_MODEL,
+        provider: 'google-vertex',
+        location,
       }),
       {
         status: 200,

@@ -36,6 +36,7 @@ export interface PatternData {
   stitchType: StitchType;
   yarnWeight: YarnWeight;
   hookSize: string;
+  qualityWarnings?: string[];
   createdAt: string;
 }
 

@@ -252,6 +252,7 @@ function getGeneratedImageFromPayload(payload: unknown): string {
 
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
 
   const getYarnDisplayName = (item: {
     yarnBrand?: string;
@@ -625,6 +626,11 @@ export default function HomePage() {
                         }
                         className="w-full"
                       />
+                      {state.colorCount <= 4 && (
+                        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          Very low color counts can reduce image clarity. Increase the color count if details look too simplified.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="mt-3 rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-slate-500">
@@ -790,6 +796,12 @@ export default function HomePage() {
           <section className="space-y-6">
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold">Preview Area</h2>
+
+              {activeQualityWarnings.length > 0 && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {activeQualityWarnings[0]}
+                </div>
+              )}
 
               {state.imageBase64 ? (
                 <div className="relative h-64 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">

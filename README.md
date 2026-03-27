@@ -1,6 +1,6 @@
 # Tapestry Crochet Pattern Generator
 
-A webapp that converts images into tapestry crochet patterns using Google Gemini AI.
+A webapp that converts images into tapestry crochet patterns using Google Gemini AI and Vertex AI Imagen.
 
 ## Features
 
@@ -25,6 +25,8 @@ See `.env.local.example` for a full list. At minimum you need:
 | Variable | Description |
 |----------|-------------|
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Google Gemini API key (from [Google AI Studio](https://aistudio.google.com/)) |
+| `GOOGLE_VERTEX_PROJECT` | Google Cloud project ID used for Vertex AI image generation/editing |
+| `GOOGLE_VERTEX_LOCATION` | Vertex AI region for Imagen models (default in code: `us-central1`) |
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `JWT_SECRET` | Random 256-bit secret for one-time download tokens |

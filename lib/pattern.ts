@@ -51,6 +51,7 @@ export interface QuantizeResult {
   stitchType: StitchType;
   yarnWeight: YarnWeight;
   hookSize: string;
+  qualityWarnings: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,41 @@ function euclidean(a: RgbPixel, b: RgbPixel): number {
   return Math.sqrt(dr * dr + dg * dg + db * db);
 }
 
+function extractRgbPixels(image: Jimp): RgbPixel[] {
+  const { data } = image.bitmap;
+  const pixels: RgbPixel[] = [];
+  for (let i = 0; i < data.length; i += 4) {
+    pixels.push([data[i], data[i + 1], data[i + 2]]);
+  }
+  return pixels;
+}
+
+function buildLowColorWarning(opts: {
+  requestedColorCount: number;
+  effectiveColorCount: number;
+  uniqueSourceColors: number;
+  averageDistance: number;
+}): string | null {
+  const { requestedColorCount, effectiveColorCount, uniqueSourceColors, averageDistance } = opts;
+
+  // Only warn when the user intentionally limited the palette.
+  if (requestedColorCount === 0) {
+    return null;
+  }
+
+  const sourceToPaletteRatio = uniqueSourceColors / Math.max(effectiveColorCount, 1);
+  const strongLoss =
+    (effectiveColorCount <= 4 && averageDistance >= 24) ||
+    (effectiveColorCount <= 6 && averageDistance >= 28);
+  const paletteVeryLimited = effectiveColorCount <= 4 && sourceToPaletteRatio >= 2.5;
+
+  if (strongLoss || paletteVeryLimited) {
+    return `The current color limit (${effectiveColorCount}) is too low for high image clarity. Increase the color count for better detail and smoother shading.`;
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -95,12 +131,8 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   const image = await Jimp.read(buffer);
   image.resize(gridWidth, gridHeight, Jimp.RESIZE_BILINEAR);
 
-  // ── Step 3: Extract flat RGB pixel array from RGBA bitmap ─────────────────
-  const { data } = image.bitmap;
-  const pixels: RgbPixel[] = [];
-  for (let i = 0; i < data.length; i += 4) {
-    pixels.push([data[i], data[i + 1], data[i + 2]]);
-  }
+  // ── Step 3: Resolve effective color count and adapt low-color images ──────
+  const originalPixels = extractRgbPixels(image);
 
   // ── Step 4: Quantize ──────────────────────────────────────────────────────
   const uniqueSelectedColorIds = selectedYarnColorIds
@@ -118,14 +150,29 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
 
   // When colorCount is 0 (auto), count unique colors in the pixelated image, capped at 30
   const AUTO_MAX = 30;
+  const uniqueSourceColors = new Set(originalPixels.map(([r, g, b]) => `${r},${g},${b}`)).size;
   const resolvedColorCount = colorCount === 0
-    ? Math.min(new Set(pixels.map(([r, g, b]) => `${r},${g},${b}`)).size, AUTO_MAX)
+    ? Math.min(uniqueSourceColors, AUTO_MAX)
     : colorCount;
 
   const effectiveColorCount =
     normalizedSelectedColorIds.length > 0
       ? Math.min(resolvedColorCount, normalizedSelectedColorIds.length)
       : resolvedColorCount;
+
+  // When users limit colors heavily, boost contrast/edges before quantization
+  // so key shapes stay readable with a tiny palette.
+  if (colorCount > 0 && effectiveColorCount <= 6) {
+    image.normalize();
+    image.contrast(effectiveColorCount <= 4 ? 0.25 : 0.15);
+    image.convolute([
+      [0, -1, 0],
+      [-1, 5, -1],
+      [0, -1, 0],
+    ]);
+  }
+
+  const pixels = extractRgbPixels(image);
 
   const colormap = quantize(pixels, effectiveColorCount);
   const rawPalette: RgbPixel[] = colormap ? colormap.palette() : [[0, 0, 0]];
@@ -169,6 +216,8 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   // ── Step 6: Map every pixel to nearest palette index (RGB Euclidean) ──────
   const paletteRgbs = palette.map((p) => hexToRgb(p.hex));
 
+  let totalDistance = 0;
+
   const pixelIndices: number[] = pixels.map((px) => {
     let minDist = Infinity;
     let idx = 0;
@@ -179,8 +228,21 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
         idx = j;
       }
     }
+    totalDistance += minDist;
     return idx;
   });
+
+  const averageDistance = pixels.length > 0 ? totalDistance / pixels.length : 0;
+  const qualityWarnings: string[] = [];
+  const lowColorWarning = buildLowColorWarning({
+    requestedColorCount: colorCount,
+    effectiveColorCount,
+    uniqueSourceColors,
+    averageDistance,
+  });
+  if (lowColorWarning) {
+    qualityWarnings.push(lowColorWarning);
+  }
 
   // ── Step 7: Build stitchGrid — row 0 = bottom of blanket (flip image) ────
   const stitchGrid: number[][] = Array.from({ length: gridHeight }, (_, gridRow) => {
@@ -222,5 +284,6 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
     stitchType,
     yarnWeight,
     hookSize: resolvedHookSize,
+    qualityWarnings,
   };
 }
