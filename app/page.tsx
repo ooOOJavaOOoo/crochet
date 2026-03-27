@@ -306,7 +306,6 @@ async function fileToBase64(file: File): Promise<string> {
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
-  const currentPresetLabel = BLANKET_PRESETS[state.presetIndex]?.label ?? 'Custom';
 
   const getYarnDisplayName = (item: {
     yarnBrand?: string;
@@ -527,7 +526,6 @@ export default function HomePage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-secondary)]">
-                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Preset: {currentPresetLabel}</span>
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Colors: {state.colorCount}</span>
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Hook: {state.hookSize}</span>
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Brand: {YARN_BRANDS.find((brand) => brand.value === state.brandId)?.label ?? 'Any'}</span>
