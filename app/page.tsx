@@ -583,18 +583,54 @@ export default function HomePage() {
                 )}
 
                 <div>
-                  <label htmlFor="color-count" className="mb-1 block text-sm font-medium text-slate-700">
-                    Color count: {state.colorCount}
-                  </label>
-                  <input
-                    id="color-count"
-                    type="range"
-                    min={2}
-                    max={25}
-                    value={state.colorCount}
-                    onChange={(event) => dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })}
-                    className="w-full"
-                  />
+                  <p className="mb-2 block text-sm font-medium text-slate-700">Color selection</p>
+                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'SetAiColorMatch', useAiColorMatch: false })}
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                        !state.useAiColorMatch
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Specify count
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'SetAiColorMatch', useAiColorMatch: true })}
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                        state.useAiColorMatch
+                          ? 'bg-white text-violet-700 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      ✦ AI best match
+                    </button>
+                  </div>
+
+                  {!state.useAiColorMatch ? (
+                    <div className="mt-3">
+                      <label htmlFor="color-count" className="mb-1 block text-sm text-slate-600">
+                        Number of colors: <span className="font-medium text-slate-800">{state.colorCount}</span>
+                      </label>
+                      <input
+                        id="color-count"
+                        type="range"
+                        min={2}
+                        max={25}
+                        value={state.colorCount}
+                        onChange={(event) =>
+                          dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
+                        }
+                        className="w-full"
+                      />
+                    </div>
+                  ) : (
+                    <p className="mt-3 rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-slate-500">
+                      AI will analyze your image and select the most visually accurate yarn colors instead of the standard color-distance algorithm. The number of colors will be determined automatically.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -712,26 +748,6 @@ export default function HomePage() {
                     </p>
                   </div>
                 )}
-
-                <div className="flex items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3">
-                  <input
-                    id="ai-color-match"
-                    type="checkbox"
-                    checked={state.useAiColorMatch}
-                    onChange={(event) =>
-                      dispatch({ type: 'SetAiColorMatch', useAiColorMatch: event.target.checked })
-                    }
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-violet-700"
-                  />
-                  <div>
-                    <label htmlFor="ai-color-match" className="block text-sm font-medium text-slate-700 cursor-pointer">
-                      AI best color match
-                    </label>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      Use AI to select the most visually accurate yarn colors for your palette instead of the standard color-distance algorithm.
-                    </p>
-                  </div>
-                </div>
 
                 <div>
                   <label htmlFor="recommend-prompt" className="mb-1 block text-sm font-medium text-slate-700">
