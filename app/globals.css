@@ -270,6 +270,54 @@ body {
   box-shadow: 0 10px 18px -14px rgba(43, 33, 64, 0.55);
 }
 
+.studio-image-grid {
+  align-items: stretch;
+}
+
+.studio-image-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 10.5rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 22px 30px -28px rgba(43, 33, 64, 0.8);
+}
+
+.studio-image-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  pointer-events: none;
+}
+
+.studio-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(25, 18, 35, 0.08), rgba(25, 18, 35, 0.62));
+}
+
+.studio-image-content {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 0.9rem;
+}
+
+@media (min-width: 640px) {
+  .studio-image-card {
+    min-height: 9rem;
+  }
+
+  .studio-image-grid .studio-image-card:first-child {
+    min-height: 11rem;
+  }
+}
+
 .skein {
   position: absolute;
   width: 6rem;

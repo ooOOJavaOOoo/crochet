@@ -63,10 +63,22 @@ const CROCHET_FEATURES = [
   'Check out with one click when the pattern looks right.',
 ];
 
-const STUDIO_CALLOUTS = [
-  'Soft gradients to feel more like a handmade studio than a spreadsheet.',
-  'Decorative skeins, hooks, and swatches that keep the page on-theme.',
-  'Brighter buttons and clearer section framing so actions stand out.',
+const STUDIO_THEME_IMAGES = [
+  {
+    label: 'Granny square texture',
+    src: '/studio-granny-square.svg',
+    palette: ['#e76f51', '#f4a261', '#f1c372', '#7bc8a4'],
+  },
+  {
+    label: 'Colorful yarn wall',
+    src: '/studio-yarn-wall.svg',
+    palette: ['#dc5a87', '#f4b544', '#73c7d9', '#9b7bd3'],
+  },
+  {
+    label: 'Crochet blanket close-up',
+    src: '/studio-blanket-detail.svg',
+    palette: ['#c86f58', '#f2ba7c', '#6fa8a3', '#445a7b'],
+  },
 ];
 
 interface State {
@@ -479,11 +491,29 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                {STUDIO_CALLOUTS.map((callout) => (
-                  <div key={callout} className="rounded-2xl bg-white/70 px-4 py-3 text-sm leading-6 text-slate-700">
-                    {callout}
-                  </div>
+              <div className="studio-image-grid mb-5 grid gap-3 sm:grid-cols-2">
+                {STUDIO_THEME_IMAGES.map((item, index) => (
+                  <article
+                    key={item.label}
+                    className={`studio-image-card ${index === 0 ? 'sm:col-span-2' : ''}`}
+                    style={{ backgroundImage: `url(${item.src})` }}
+                  >
+                    <div className="studio-image-overlay" />
+                    <div className="studio-image-content">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/85">Studio inspiration</p>
+                      <p className="mt-1 text-sm font-semibold text-white">{item.label}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        {item.palette.map((tone) => (
+                          <span
+                            key={tone}
+                            className="h-3 w-6 rounded-full border border-white/70"
+                            style={{ backgroundColor: tone }}
+                            aria-label={`Palette color ${tone}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </article>
                 ))}
               </div>
 
@@ -824,11 +854,29 @@ export default function HomePage() {
             <div className="crochet-card-soft rounded-[1.75rem] p-5 sm:p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Decorative details</p>
               <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">A brighter workspace</h3>
-              <div className="mt-4 grid gap-3">
-                {STUDIO_CALLOUTS.map((callout) => (
-                  <div key={callout} className="rounded-2xl bg-white/70 px-4 py-3 text-sm leading-6 text-slate-700">
-                    {callout}
-                  </div>
+              <p className="mt-3 text-sm leading-6 text-slate-700">
+                Studio color references and crochet image texture keep the workspace centered on yarn and finished blanket art.
+              </p>
+              <div className="mt-4 flex items-center gap-2">
+                {HERO_SWATCHES.map((swatch) => (
+                  <span
+                    key={swatch.name}
+                    className="h-6 w-10 rounded-full border border-white/80 shadow-sm"
+                    style={{ backgroundColor: swatch.hex }}
+                    aria-label={swatch.name}
+                    title={swatch.name}
+                  />
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {STUDIO_THEME_IMAGES.map((item) => (
+                  <div
+                    key={`mini-${item.label}`}
+                    className="h-20 rounded-xl border border-white/60 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${item.src})` }}
+                    aria-label={item.label}
+                    title={item.label}
+                  />
                 ))}
               </div>
             </div>

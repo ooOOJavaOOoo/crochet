@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Crochet Blanket Detail</title>
+  <desc id="desc">Close-up weave style pattern with colorful stitched rows.</desc>
+  <rect width="1200" height="900" fill="#f6ecdd" />
+
+  <g stroke-linecap="round" stroke-width="16" fill="none">
+    <path d="M80 120 C 250 60, 360 180, 530 120 S 820 60, 980 120 S 1110 180, 1160 120" stroke="#d96f6a" />
+    <path d="M40 180 C 220 120, 350 240, 540 180 S 860 120, 1020 180 S 1140 240, 1180 180" stroke="#e7a95f" />
+    <path d="M80 240 C 270 180, 390 300, 590 240 S 890 180, 1040 240 S 1140 300, 1180 240" stroke="#f2cb72" />
+    <path d="M40 300 C 220 240, 350 360, 540 300 S 840 240, 1000 300 S 1140 360, 1180 300" stroke="#83c4a2" />
+    <path d="M80 360 C 280 300, 420 420, 620 360 S 930 300, 1080 360 S 1140 420, 1180 360" stroke="#6abdcf" />
+    <path d="M40 420 C 220 360, 350 480, 540 420 S 850 360, 1020 420 S 1140 480, 1180 420" stroke="#7e8ad9" />
+    <path d="M80 480 C 250 420, 390 540, 580 480 S 890 420, 1060 480 S 1140 540, 1180 480" stroke="#c274c5" />
+    <path d="M40 540 C 220 480, 350 600, 540 540 S 840 480, 1000 540 S 1140 600, 1180 540" stroke="#db6f93" />
+    <path d="M80 600 C 250 540, 390 660, 580 600 S 890 540, 1060 600 S 1140 660, 1180 600" stroke="#e48f68" />
+    <path d="M40 660 C 220 600, 350 720, 540 660 S 850 600, 1020 660 S 1140 720, 1180 660" stroke="#84b76a" />
+    <path d="M80 720 C 280 660, 420 780, 620 720 S 930 660, 1080 720 S 1140 780, 1180 720" stroke="#6dabc8" />
+  </g>
+
+  <g fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="4">
+    <path d="M70 95 L1120 95" />
+    <path d="M70 155 L1120 155" />
+    <path d="M70 215 L1120 215" />
+    <path d="M70 275 L1120 275" />
+    <path d="M70 335 L1120 335" />
+    <path d="M70 395 L1120 395" />
+    <path d="M70 455 L1120 455" />
+    <path d="M70 515 L1120 515" />
+    <path d="M70 575 L1120 575" />
+    <path d="M70 635 L1120 635" />
+    <path d="M70 695 L1120 695" />
+    <path d="M70 755 L1120 755" />
+  </g>
+</svg>
