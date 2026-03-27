@@ -22,6 +22,10 @@ These must be resolved before the app will work correctly in production.
   - `KV_REST_API_TOKEN` — Vercel KV REST token
   - `BLOB_READ_WRITE_TOKEN` — Vercel Blob read/write token
 - [x] **Verify AI model names are valid** — `lib/models.ts` uses `"gemini-3-flash-preview"` and `"imagen-4.0-fast-generate-001"`. Confirm these are current identifiers in the Google AI API; update if they have changed.
+- [ ] **Set up Google Cloud credentials for Vertex AI** — The image generation endpoint (`POST /api/image`) uses Vertex AI (Imagen), which requires Google Cloud service account credentials. 
+  - **Local dev**: Run `gcloud auth application-default login` OR set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json` in `.env.local`
+  - **Production (Vercel)**: Upload full service account JSON as `GOOGLE_APPLICATION_CREDENTIALS_JSON` env var in Vercel Dashboard. The app will automatically write it to `/tmp` on startup.
+  - See [Google Cloud auth docs](https://cloud.google.com/docs/authentication/application-default-credentials) for service account setup.
 
 ---
 
