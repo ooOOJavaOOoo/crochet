@@ -40,7 +40,7 @@ export type ColorMatchResult = z.infer<typeof ColorMatchSchema>;
 // Input types
 // ---------------------------------------------------------------------------
 
-export type YarnBrand = 'lion-brand' | 'red-heart' | 'caron' | 'paintbox';
+export type YarnBrand = 'lion-brand' | 'red-heart' | 'caron' | 'paintbox' | 'i-love-this-yarn';
 
 export interface MatchColorsInput {
   hexColors: string[];
@@ -85,17 +85,23 @@ Paintbox Simply DK:
   Clean tones: Pure Black, Pure White, Slate Grey, Ink Blue, Midnight Blue, Sailor Blue
   Accent: Violet Purple, Berry Red, Mustard Yellow, Tea Rose
 
+I Love this Yarn:
+  Neutrals: White, Black, Light Grey, Charcoal, Silver, Cream, Ivory, Beige, Tan
+  Brights: Red, Dark Red, Crimson, Orange, Dark Orange, Yellow, Lime, Green
+  Blues/Purples: Cyan, Sky Blue, Blue, Navy, Royal Blue, Lavender, Purple, Violet
+  Accent: Pink, Hot Pink, Deep Pink, Rose, Plum, Magenta, Brown, Chocolate, Maroon
+
 COLOR MATCHING LOGIC:
 - Match hue family first (red · orange · yellow · green · blue · violet · neutral/brown · grey · white · black)
 - Then match lightness tier (light · medium · dark)
-- Near-white (lightness > 90%): Lion Brand → "Fisherman", Red Heart → "Soft White", Caron → "Bone", Paintbox → "Pure White"
-- Near-black (lightness < 10%): all brands → "Black" (Paintbox → "Pure Black")
-- Warm grey → Lion Brand "Grey Marble", Red Heart "Grey Heather", Caron "Grey Heather", Paintbox "Slate Grey"
+- Near-white (lightness > 90%): Lion Brand → "Fisherman", Red Heart → "Soft White", Caron → "Bone", Paintbox → "Pure White", I Love this Yarn → "White"
+- Near-black (lightness < 10%): all brands → "Black" (Paintbox → "Pure Black", I Love this Yarn → "Black")
+- Warm grey → Lion Brand "Grey Marble", Red Heart "Grey Heather", Caron "Grey Heather", Paintbox "Slate Grey", I Love this Yarn "Light Grey"
 
 OUTPUT RULES — read carefully:
 - Return ONLY a valid JSON object. No markdown. No code fences. No explanation. No trailing commas.
 - The "hex" field must echo the input hex string exactly, including the # symbol.
-- Brand names must be the full readable name: "Lion Brand", "Red Heart", "Caron", "Paintbox".
+- Brand names must be the full readable name: "Lion Brand", "Red Heart", "Caron", "Paintbox", or "I Love this Yarn".
 - Color names must be from the brand's known range above; do not invent SKU codes or fabricate product names.
 
 EXAMPLE (2 colors, brand = Red Heart):
@@ -110,6 +116,7 @@ const BRAND_DISPLAY: Record<YarnBrand, string> = {
   'red-heart': 'Red Heart Super Saver',
   'caron': 'Caron Simply Soft',
   'paintbox': 'Paintbox Simply DK',
+  'i-love-this-yarn': 'I Love this Yarn',
 };
 
 function buildUserMessage(input: MatchColorsInput): string {
