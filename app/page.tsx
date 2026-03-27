@@ -62,7 +62,6 @@ interface State {
   brandId: string;
   availableYarnColors: YarnColorOption[];
   selectedYarnColorIds: string[];
-  useAiColorMatch: boolean;
   patternData: PatternData | null;
   previewData: PreviewData | null;
   loadingMessage: string | null;
@@ -83,7 +82,6 @@ type Action =
   | { type: 'SetBrandId'; brandId: string }
   | { type: 'SetAvailableYarnColors'; colors: YarnColorOption[] }
   | { type: 'SetSelectedYarnColorIds'; colorIds: string[] }
-  | { type: 'SetAiColorMatch'; useAiColorMatch: boolean }
   | { type: 'SetPatternData'; patternData: PatternData | null }
   | { type: 'SetPreviewData'; previewData: PreviewData | null }
   | { type: 'SetLoadingMessage'; loadingMessage: string | null }
@@ -106,7 +104,6 @@ const INITIAL_STATE: State = {
   brandId: 'red-heart',
   availableYarnColors: [],
   selectedYarnColorIds: [],
-  useAiColorMatch: false,
   patternData: null,
   previewData: null,
   loadingMessage: null,
@@ -158,8 +155,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, availableYarnColors: action.colors };
     case 'SetSelectedYarnColorIds':
       return { ...state, selectedYarnColorIds: action.colorIds };
-    case 'SetAiColorMatch':
-      return { ...state, useAiColorMatch: action.useAiColorMatch };
     case 'SetPatternData':
       return { ...state, patternData: action.patternData };
     case 'SetPreviewData':
@@ -212,37 +207,6 @@ async function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('Unable to read selected file.'));
     reader.readAsDataURL(file);
   });
-}
-
-async function getImageAspectRatio(imageBase64: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      if (!image.height) {
-        reject(new Error('Could not determine image dimensions.'));
-        return;
-      }
-      resolve(image.width / image.height);
-    };
-    image.onerror = () => reject(new Error('Could not load image dimensions.'));
-    image.src = imageBase64;
-  });
-}
-
-function getGeneratedImageFromPayload(payload: unknown): string {
-  if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid image response from server.');
-  }
-
-  const imagePayload = payload as { image?: unknown; imageBase64?: unknown };
-  if (typeof imagePayload.image === 'string' && imagePayload.image.length > 0) {
-    return imagePayload.image;
-  }
-  if (typeof imagePayload.imageBase64 === 'string' && imagePayload.imageBase64.length > 0) {
-    return imagePayload.imageBase64;
-  }
-
-  throw new Error('Image response did not include image data.');
 }
 
 export default function HomePage() {
@@ -337,47 +301,9 @@ export default function HomePage() {
     });
   };
 
-  const handleRecommend = async () => {
-    try {
-      dispatch({ type: 'SetError', error: null });
-      dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Applying AI recommendation...' });
-
-      const sourceImage = state.imageBase64 ?? undefined;
-      const aspectRatio = sourceImage ? await getImageAspectRatio(sourceImage) : undefined;
-      const prompt = sourceImage
-        ? 'Create a cleaner, crochet-friendly version of this image with strong contrast and simplified color blocks.'
-        : 'Create a crochet-friendly image with strong contrast and simplified color blocks.';
-
-      const res = await fetch('/api/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          sourceImage,
-          aspectRatio,
-        }),
-      });
-
-      const data = await getJsonOrThrow<{ image?: string; imageBase64?: string }>(res);
-      dispatch({ type: 'SetImageBase64', imageBase64: getGeneratedImageFromPayload(data) });
-      dispatch({ type: 'SetStep', step: 'settings' });
-      dispatch({
-        type: 'SetToast',
-        toast: sourceImage
-          ? 'AI recommendation applied to your uploaded image.'
-          : 'AI recommendation created a custom image.',
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to apply AI recommendation.';
-      dispatch({ type: 'SetError', error: message });
-    } finally {
-      dispatch({ type: 'SetLoadingMessage', loadingMessage: null });
-    }
-  };
-
   const handleGeneratePreview = async () => {
     if (!state.imageBase64) {
-      dispatch({ type: 'SetError', error: 'Please upload or generate an image first.' });
+      dispatch({ type: 'SetError', error: 'Please upload an image first.' });
       return;
     }
 
@@ -405,7 +331,6 @@ export default function HomePage() {
           brandId: state.brandId || undefined,
           selectedYarnColorIds:
             state.selectedYarnColorIds.length > 0 ? state.selectedYarnColorIds : undefined,
-          useAiColorMatch: state.useAiColorMatch,
         }),
       });
 
@@ -512,7 +437,7 @@ export default function HomePage() {
                   className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
                 />
                 <p className="text-xs text-slate-500">
-                  Skip upload if you want AI to create an image from text in the recommendation box below.
+                  Upload an image to generate your crochet pattern preview.
                 </p>
               </div>
             </div>
@@ -577,59 +502,28 @@ export default function HomePage() {
                 )}
 
                 <div>
-                  <p className="mb-2 block text-sm font-medium text-slate-700">Color selection</p>
-                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'SetAiColorMatch', useAiColorMatch: false })}
-                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                        !state.useAiColorMatch
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Specify count
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'SetAiColorMatch', useAiColorMatch: true })}
-                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                        state.useAiColorMatch
-                          ? 'bg-white text-violet-700 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      ✦ AI best match
-                    </button>
+                  <p className="mb-2 block text-sm font-medium text-slate-700">Color count</p>
+                  <div className="mt-3">
+                    <label htmlFor="color-count" className="mb-1 block text-sm text-slate-600">
+                      Number of colors: <span className="font-medium text-slate-800">{state.colorCount}</span>
+                    </label>
+                    <input
+                      id="color-count"
+                      type="range"
+                      min={2}
+                      max={25}
+                      value={state.colorCount}
+                      onChange={(event) =>
+                        dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
+                      }
+                      className="w-full"
+                    />
+                    {state.colorCount <= 4 && (
+                      <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        Very low color counts can reduce image clarity. Increase the color count if details look too simplified.
+                      </p>
+                    )}
                   </div>
-
-                  {!state.useAiColorMatch ? (
-                    <div className="mt-3">
-                      <label htmlFor="color-count" className="mb-1 block text-sm text-slate-600">
-                        Number of colors: <span className="font-medium text-slate-800">{state.colorCount}</span>
-                      </label>
-                      <input
-                        id="color-count"
-                        type="range"
-                        min={2}
-                        max={25}
-                        value={state.colorCount}
-                        onChange={(event) =>
-                          dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
-                        }
-                        className="w-full"
-                      />
-                      {state.colorCount <= 4 && (
-                        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                          Very low color counts can reduce image clarity. Increase the color count if details look too simplified.
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="mt-3 rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-slate-500">
-                      AI will analyze your image and select the most visually accurate yarn colors instead of the standard color-distance algorithm. The number of colors will be determined automatically.
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -747,15 +641,6 @@ export default function HomePage() {
                     </p>
                   </div>
                 )}
-
-                <button
-                  type="button"
-                  onClick={handleRecommend}
-                  disabled={state.loadingMessage !== null}
-                  className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Generate AI Recommendation
-                </button>
               </div>
             </div>
 
@@ -800,7 +685,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-                  Your uploaded or AI-generated image preview appears here.
+                  Your uploaded image preview appears here.
                 </div>
               )}
             </div>
