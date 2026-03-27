@@ -57,6 +57,8 @@ export interface StoredDownloadToken {
   jti: string;
   issuedAt: string;
   used: boolean;
+  /** Number of times this token has been used (allows up to MAX_DOWNLOADS retries). */
+  downloadCount?: number;
 }
 
 export type ShoppingListCategory = 'yarn' | 'tool';

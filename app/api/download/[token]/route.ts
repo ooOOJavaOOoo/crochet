@@ -42,9 +42,11 @@ export async function GET(
     return Response.json({ error: 'Token not found' }, { status: 403 });
   }
 
-  // 4. Check single-use
-  if (tokenRecord.used) {
-    return Response.json({ error: 'Token already used' }, { status: 403 });
+  // 4. Check download limit (allow up to 3 attempts so interrupted downloads don't lock users out)
+  const MAX_DOWNLOADS = 3;
+  const currentCount = tokenRecord.downloadCount ?? (tokenRecord.used ? MAX_DOWNLOADS : 0);
+  if (currentCount >= MAX_DOWNLOADS) {
+    return Response.json({ error: 'Download limit reached' }, { status: 403 });
   }
 
   // 5. Fetch pattern
@@ -53,8 +55,8 @@ export async function GET(
     return Response.json({ error: 'Pattern not found' }, { status: 404 });
   }
 
-  // 6. Mark token as used BEFORE streaming (prevents double-download on retries)
-  await kv.set(`download:${jti}`, { ...tokenRecord, used: true }, { ex: 86400 });
+  // 6. Increment download count BEFORE streaming (prevents parallel double-downloads)
+  await kv.set(`download:${jti}`, { ...tokenRecord, used: currentCount + 1 >= MAX_DOWNLOADS, downloadCount: currentCount + 1 }, { ex: 86400 });
 
   // 7. Fetch PDF from Vercel Blob and stream to client
   let blobResponse: globalThis.Response;
@@ -65,8 +67,8 @@ export async function GET(
     }
   } catch (err) {
     console.error('[GET /api/download] Blob fetch failed', err);
-    // Best-effort: un-mark token so user can retry
-    await kv.set(`download:${jti}`, { ...tokenRecord, used: false }, { ex: 86400 });
+    // Best-effort: restore count so user can retry
+    await kv.set(`download:${jti}`, { ...tokenRecord, used: false, downloadCount: currentCount }, { ex: 86400 });
     return Response.json({ error: 'Could not retrieve PDF' }, { status: 502 });
   }
 

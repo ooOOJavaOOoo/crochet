@@ -33,6 +33,8 @@ function SuccessContent() {
   const [downloadToken, setDownloadToken] = useState<string | null>(null);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -115,6 +117,35 @@ function SuccessContent() {
     };
   }, [sessionId]);
 
+  // ── Download handler (fetch+Blob avoids page navigation in WebView) ──────────
+
+  const handleDownload = async () => {
+    if (!downloadToken || isDownloading) return;
+    setIsDownloading(true);
+    setDownloadError(null);
+    try {
+      const res = await fetch(`/api/download/${encodeURIComponent(downloadToken)}`);
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setDownloadError(data.error ?? 'Download failed. Please try again.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'crochet-pattern.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setDownloadError('Download failed. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -150,13 +181,16 @@ function SuccessContent() {
               <p className="text-gray-500 text-sm mb-8">
                 Thank you for your purchase. Download your full PDF below.
               </p>
-              <a
-                href={`/api/download/${encodeURIComponent(downloadToken)}`}
-                download
-                className="inline-flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-xl font-bold text-lg transition-colors"
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="inline-flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-4 px-6 rounded-xl font-bold text-lg transition-colors"
               >
-                ⬇ Download Full PDF
-              </a>
+                {isDownloading ? 'Downloading…' : '⬇ Download Full PDF'}
+              </button>
+              {downloadError && (
+                <p className="text-sm text-red-600 mt-3">{downloadError}</p>
+              )}
               <p className="text-xs text-gray-400 mt-4">
                 Your download link is valid for 24 hours.
               </p>
