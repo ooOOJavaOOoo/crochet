@@ -49,6 +49,26 @@ const YARN_BRANDS = [
   { value: 'caron', label: 'Caron' },
 ];
 
+const HERO_SWATCHES = [
+  { name: 'Berry Pop', hex: '#dc5a87' },
+  { name: 'Sunny Gold', hex: '#f4b544' },
+  { name: 'Mint Loop', hex: '#7bc8a4' },
+  { name: 'Sky Stitch', hex: '#73c7d9' },
+  { name: 'Coral Twist', hex: '#f26f63' },
+];
+
+const CROCHET_FEATURES = [
+  'Match your yarn palette before generating the chart.',
+  'Preview the stitch map with a colorful legend and watermark-safe sample.',
+  'Check out with one click when the pattern looks right.',
+];
+
+const STUDIO_CALLOUTS = [
+  'Soft gradients to feel more like a handmade studio than a spreadsheet.',
+  'Decorative skeins, hooks, and swatches that keep the page on-theme.',
+  'Brighter buttons and clearer section framing so actions stand out.',
+];
+
 interface State {
   step: Step;
   imageBase64: string | null;
@@ -212,6 +232,7 @@ async function fileToBase64(file: File): Promise<string> {
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
+  const currentPresetLabel = BLANKET_PRESETS[state.presetIndex]?.label ?? 'Custom';
 
   const getYarnDisplayName = (item: {
     yarnBrand?: string;
@@ -386,47 +407,140 @@ export default function HomePage() {
   const isCustomPreset = state.presetIndex === BLANKET_PRESETS.length - 1;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="crochet-page min-h-screen text-slate-900">
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Crochet Pattern Generator</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Upload or generate an image, tune your settings, then preview and purchase the full PDF.
-            </p>
+        <section className="crochet-hero mb-8 rounded-[2rem] px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
+          <div aria-hidden="true" className="skein skein-peach float-gentle right-6 top-6 hidden lg:block" />
+          <div aria-hidden="true" className="skein skein-gold float-gentle-slow bottom-8 left-[48%] hidden lg:block" />
+          <div aria-hidden="true" className="skein skein-mint float-gentle left-8 top-20 hidden xl:block" />
+          <div aria-hidden="true" className="hook float-gentle-slow right-28 top-24 hidden lg:block rotate-[28deg]" />
+          <div aria-hidden="true" className="hook float-gentle bottom-16 left-8 hidden xl:block -rotate-[24deg]" />
+
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+            <div className="relative z-10">
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <span className="hero-badge text-xs font-semibold uppercase tracking-[0.22em]">Crochet Studio</span>
+                <span className="rounded-full border border-white/60 bg-white/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-800">
+                  Yarn-first UI refresh
+                </span>
+              </div>
+
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="max-w-3xl">
+                  <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                    Turn photos into bright, yarn-ready crochet patterns.
+                  </h1>
+                  <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
+                    Upload a favorite image, tune the palette and stitch settings, then preview the chart in a page that feels handmade instead of clinical.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'Reset' })}
+                  className="secondary-button shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700"
+                >
+                  Start Over
+                </button>
+              </div>
+
+              <div className="mb-6 grid gap-3 sm:grid-cols-3">
+                {CROCHET_FEATURES.map((feature) => (
+                  <div key={feature} className="feature-pill rounded-2xl px-4 py-4 text-sm leading-6 text-slate-700">
+                    {feature}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Preset: {currentPresetLabel}</span>
+                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Colors: {state.colorCount}</span>
+                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Hook: {state.hookSize}</span>
+                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Brand: {YARN_BRANDS.find((brand) => brand.value === state.brandId)?.label ?? 'Any'}</span>
+              </div>
+            </div>
+
+            <aside className="crochet-card-soft shine-surface relative z-10 rounded-[1.75rem] p-5 sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Studio palette</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">Colorful by default</h2>
+                </div>
+                <div className="flex -space-x-2">
+                  {HERO_SWATCHES.map((swatch) => (
+                    <span
+                      key={swatch.name}
+                      className="swatch-dot"
+                      style={{ backgroundColor: swatch.hex }}
+                      aria-label={swatch.name}
+                      title={swatch.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                {STUDIO_CALLOUTS.map((callout) => (
+                  <div key={callout} className="rounded-2xl bg-white/70 px-4 py-3 text-sm leading-6 text-slate-700">
+                    {callout}
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-[1.5rem] border border-white/60 bg-white/75 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-700">Project recipe</p>
+                    <p className="mt-1 text-sm text-slate-600">Balanced for quick previews and colorful finished PDFs.</p>
+                  </div>
+                  <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-amber-800">
+                    Ready to stitch
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-sm text-slate-700">
+                  <div className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3">
+                    <span>Stitch mode</span>
+                    <span className="font-semibold text-slate-900">{state.stitchType === 'tapestry' ? 'Tapestry' : 'C2C'}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-sky-50 px-4 py-3">
+                    <span>Yarn weight</span>
+                    <span className="font-semibold text-slate-900">{getYarnWeightConfig(state.yarnWeight).label}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
+                    <span>Grid size</span>
+                    <span className="font-semibold text-slate-900">{state.gridWidth} x {state.gridHeight}</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'Reset' })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Start Over
-          </button>
+        </section>
+
+        <div className="mb-6 space-y-3">
+          {state.error && <div className="banner banner-error">{state.error}</div>}
+
+          {state.toast && <div className="banner banner-success">{state.toast}</div>}
+
+          {state.loadingMessage && <div className="banner banner-info">{state.loadingMessage}</div>}
         </div>
 
-        {state.error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{state.error}</div>
-        )}
-
-        {state.toast && (
-          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {state.toast}
-          </div>
-        )}
-
-        {state.loadingMessage && (
-          <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
-            {state.loadingMessage}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <section className="space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold">1. Choose Your Image</h2>
+            <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-700">Step 1</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">Choose your image</h2>
+                </div>
+                <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                  <span className="swatch-dot !h-3 !w-3" style={{ backgroundColor: '#f26f63' }} />
+                  Photo to pattern
+                </div>
+              </div>
 
               <div className="space-y-3">
-                <label htmlFor="photo" className="block text-sm font-medium text-slate-700">
+                <label htmlFor="photo" className="form-label">
                   Upload photo (JPEG, PNG, WebP up to 10MB)
                 </label>
                 <input
@@ -434,27 +548,35 @@ export default function HomePage() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handleFileUpload}
-                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
+                  className="form-input block"
                 />
-                <p className="text-xs text-slate-500">
-                  Upload an image to generate your crochet pattern preview.
+                <p className="text-sm leading-6 text-slate-600">
+                  Portraits, pets, florals, and graphic art all work. Start with a clean subject and strong contrast for the best chart.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold">2. Pattern Settings</h2>
-
-              <div className="space-y-4">
+            <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <label htmlFor="preset" className="mb-1 block text-sm font-medium text-slate-700">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-700">Step 2</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">Pattern settings</h2>
+                </div>
+                <div className="rounded-full bg-violet-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+                  Fine tune the yarn math
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="preset" className="form-label">
                     Blanket size
                   </label>
                   <select
                     id="preset"
                     value={state.presetIndex}
                     onChange={(event) => handlePresetChange(Number(event.target.value))}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                    className="form-input"
                   >
                     {BLANKET_PRESETS.map((preset, index) => (
                       <option key={preset.label} value={index}>
@@ -467,7 +589,7 @@ export default function HomePage() {
                 {isCustomPreset && (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="grid-width" className="mb-1 block text-sm font-medium text-slate-700">
+                      <label htmlFor="grid-width" className="form-label">
                         Grid width
                       </label>
                       <input
@@ -479,11 +601,11 @@ export default function HomePage() {
                         onChange={(event) =>
                           dispatch({ type: 'SetGridWidth', gridWidth: Number(event.target.value) || 20 })
                         }
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        className="form-input"
                       />
                     </div>
                     <div>
-                      <label htmlFor="grid-height" className="mb-1 block text-sm font-medium text-slate-700">
+                      <label htmlFor="grid-height" className="form-label">
                         Grid height
                       </label>
                       <input
@@ -495,60 +617,63 @@ export default function HomePage() {
                         onChange={(event) =>
                           dispatch({ type: 'SetGridHeight', gridHeight: Number(event.target.value) || 20 })
                         }
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        className="form-input"
                       />
                     </div>
                   </div>
                 )}
 
-                <div>
-                  <p className="mb-2 block text-sm font-medium text-slate-700">Color count</p>
-                  <div className="mt-3">
-                    <label htmlFor="color-count" className="mb-1 block text-sm text-slate-600">
-                      Number of colors: <span className="font-medium text-slate-800">{state.colorCount}</span>
-                    </label>
-                    <input
-                      id="color-count"
-                      type="range"
-                      min={2}
-                      max={25}
-                      value={state.colorCount}
-                      onChange={(event) =>
-                        dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
-                      }
-                      className="w-full"
-                    />
-                    {state.colorCount <= 4 && (
-                      <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        Very low color counts can reduce image clarity. Increase the color count if details look too simplified.
-                      </p>
-                    )}
+                <div className="rounded-[1.5rem] bg-gradient-to-r from-rose-50 via-amber-50 to-sky-50 px-4 py-4">
+                  <label htmlFor="color-count" className="form-label mb-2">
+                    Number of colors: <span className="text-slate-900">{state.colorCount}</span>
+                  </label>
+                  <input
+                    id="color-count"
+                    type="range"
+                    min={2}
+                    max={25}
+                    value={state.colorCount}
+                    onChange={(event) =>
+                      dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
+                    }
+                    className="color-slider w-full"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {HERO_SWATCHES.slice(0, Math.min(state.colorCount, HERO_SWATCHES.length)).map((swatch) => (
+                      <span
+                        key={swatch.name}
+                        className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        {swatch.name}
+                      </span>
+                    ))}
                   </div>
+                  {state.colorCount <= 4 && (
+                    <p className="mt-3 rounded-2xl border border-amber-200 bg-white/70 px-3 py-3 text-xs leading-5 text-amber-900">
+                      Very low color counts can flatten details. Increase the slider if the preview feels too simplified.
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <p className="mb-1 block text-sm font-medium text-slate-700">Stitch type</p>
-                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                  <p className="form-label">Stitch type</p>
+                  <div className="segmented-control">
                     <button
                       type="button"
                       onClick={() => dispatch({ type: 'SetStitchType', stitchType: 'tapestry' })}
-                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                        state.stitchType === 'tapestry' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`segmented-button ${state.stitchType === 'tapestry' ? 'segmented-button-active' : ''}`}
                     >
                       Tapestry
                     </button>
                     <button
                       type="button"
                       onClick={() => dispatch({ type: 'SetStitchType', stitchType: 'c2c' })}
-                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                        state.stitchType === 'c2c' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`segmented-button ${state.stitchType === 'c2c' ? 'segmented-button-active' : ''}`}
                     >
                       C2C (Corner-to-Corner)
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
                     {state.stitchType === 'tapestry'
                       ? getYarnWeightConfig(state.yarnWeight).tapestryGaugeHint
                       : getYarnWeightConfig(state.yarnWeight).c2cGaugeHint}
@@ -557,7 +682,7 @@ export default function HomePage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="yarn-weight" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="yarn-weight" className="form-label">
                       Yarn weight
                     </label>
                     <select
@@ -566,7 +691,7 @@ export default function HomePage() {
                       onChange={(event) =>
                         dispatch({ type: 'SetYarnWeight', yarnWeight: event.target.value as YarnWeight })
                       }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      className="form-input"
                     >
                       {YARN_WEIGHT_CONFIGS.map((w) => (
                         <option key={w.id} value={w.id}>
@@ -577,16 +702,14 @@ export default function HomePage() {
                   </div>
 
                   <div>
-                    <label htmlFor="hook-size" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="hook-size" className="form-label">
                       Hook size
                     </label>
                     <select
                       id="hook-size"
                       value={state.hookSize}
-                      onChange={(event) =>
-                        dispatch({ type: 'SetHookSize', hookSize: event.target.value })
-                      }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      onChange={(event) => dispatch({ type: 'SetHookSize', hookSize: event.target.value })}
+                      className="form-input"
                     >
                       {getYarnWeightConfig(state.yarnWeight).hookOptions.map((h) => (
                         <option key={h.label} value={h.label}>
@@ -598,14 +721,14 @@ export default function HomePage() {
                 </div>
 
                 <div>
-                  <label htmlFor="brand" className="mb-1 block text-sm font-medium text-slate-700">
+                  <label htmlFor="brand" className="form-label">
                     Yarn brand (optional)
                   </label>
                   <select
                     id="brand"
                     value={state.brandId}
                     onChange={(event) => dispatch({ type: 'SetBrandId', brandId: event.target.value })}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                    className="form-input"
                   >
                     {YARN_BRANDS.map((brand) => (
                       <option key={brand.value || 'none'} value={brand.value}>
@@ -617,7 +740,7 @@ export default function HomePage() {
 
                 {state.brandId && (
                   <div>
-                    <label htmlFor="brand-colors" className="mb-1 block text-sm font-medium text-slate-700">
+                    <label htmlFor="brand-colors" className="form-label">
                       On-hand yarn colors (optional)
                     </label>
                     <select
@@ -628,7 +751,7 @@ export default function HomePage() {
                         const selected = Array.from(event.target.selectedOptions, (option) => option.value);
                         dispatch({ type: 'SetSelectedYarnColorIds', colorIds: selected });
                       }}
-                      className="h-36 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      className="form-input h-36"
                     >
                       {state.availableYarnColors.map((color) => (
                         <option key={color.id} value={color.id}>
@@ -636,8 +759,8 @@ export default function HomePage() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Choose one or more colors to limit the pattern to what you already have.
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Limit the palette to yarn you already own and keep your final shopping list realistic.
                     </p>
                   </div>
                 )}
@@ -648,35 +771,43 @@ export default function HomePage() {
               type="button"
               onClick={handleGeneratePreview}
               disabled={!state.imageBase64 || state.loadingMessage !== null}
-              className="w-full rounded-xl bg-violet-700 px-6 py-4 text-base font-semibold text-white shadow-sm hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="primary-button w-full rounded-[1.4rem] px-6 py-4 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               Generate Preview
             </button>
           </section>
 
           <section className="space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold">Preview Area</h2>
+            <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Preview board</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">See the chart before you buy</h2>
+                </div>
+                <div className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Watermarked sample
+                </div>
+              </div>
 
               {activeQualityWarnings.length > 0 && (
-                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
                   {activeQualityWarnings[0]}
                 </div>
               )}
 
               {state.imageBase64 ? (
-                <div className="relative h-64 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                <div className="preview-frame relative h-72 w-full rounded-[1.5rem] p-3">
                   <img
                     src={state.imageBase64}
                     alt="Source preview"
-                    className="h-full w-full object-contain"
+                    className="h-full w-full rounded-[1.1rem] object-contain"
                     style={{ imageRendering: 'pixelated' }}
                   />
                   <div
-                    className="absolute inset-0"
+                    className="absolute inset-3 rounded-[1.1rem]"
                     style={{
                       backgroundImage:
-                        'linear-gradient(to right, rgba(15,23,42,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.22) 1px, transparent 1px)',
+                        'linear-gradient(to right, rgba(43,33,64,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(43,33,64,0.16) 1px, transparent 1px)',
                       backgroundSize: '12px 12px',
                       backgroundPosition: '0 0, 0 0',
                       pointerEvents: 'none',
@@ -684,19 +815,37 @@ export default function HomePage() {
                   />
                 </div>
               ) : (
-                <div className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-                  Your uploaded image preview appears here.
+                <div className="preview-frame flex min-h-72 items-center justify-center rounded-[1.5rem] px-6 text-center text-sm leading-6 text-slate-500">
+                  Your uploaded image preview appears here once you add a photo.
                 </div>
               )}
             </div>
 
+            <div className="crochet-card-soft rounded-[1.75rem] p-5 sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Decorative details</p>
+              <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">A brighter workspace</h3>
+              <div className="mt-4 grid gap-3">
+                {STUDIO_CALLOUTS.map((callout) => (
+                  <div key={callout} className="rounded-2xl bg-white/70 px-4 py-3 text-sm leading-6 text-slate-700">
+                    {callout}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {state.previewData && (
               <>
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="mb-3 text-base font-semibold">{state.previewData.title}</h3>
-                  <div className="relative h-[460px] overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-display text-2xl font-semibold text-slate-900">{state.previewData.title}</h3>
+                    <div className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                      {state.previewData.totalRows} rows in chart
+                    </div>
+                  </div>
+
+                  <div className="preview-frame relative h-[460px] rounded-[1.5rem] p-3">
                     <div
-                      className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
+                      className="h-full w-full rounded-[1rem] bg-white/70 [&>svg]:h-full [&>svg]:w-full"
                       dangerouslySetInnerHTML={{ __html: state.previewData.previewSvg }}
                     />
                     {state.previewData.isWatermarked && (
@@ -709,35 +858,50 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="mb-3 text-base font-semibold">Color Legend</h3>
-                  <p className="mb-4 text-sm text-slate-600">
-                    Preview includes {state.previewData.colorLegend.length} of {state.previewData.totalLegendCount} colors.
-                    {state.previewData.hiddenLegendCount > 0
-                      ? ` Purchase the PDF to unlock the remaining ${state.previewData.hiddenLegendCount} colors and full yarn inventory.`
-                      : ' Purchase the PDF to unlock the complete pattern and yarn inventory.'}
-                  </p>
-                  <div className="overflow-x-auto">
+                <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
+                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-display text-2xl font-semibold text-slate-900">Color legend</h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                        Preview includes {state.previewData.colorLegend.length} of {state.previewData.totalLegendCount} colors.
+                        {state.previewData.hiddenLegendCount > 0
+                          ? ` Purchase the PDF to unlock the remaining ${state.previewData.hiddenLegendCount} colors and full yarn inventory.`
+                          : ' Purchase the PDF to unlock the complete pattern and yarn inventory.'}
+                      </p>
+                    </div>
+                    <div className="flex -space-x-2">
+                      {state.previewData.colorLegend.slice(0, 5).map((entry, index) => (
+                        <span
+                          key={`${entry.symbol}-${index}`}
+                          className="swatch-dot !h-6 !w-6"
+                          style={{ backgroundColor: entry.hex }}
+                          aria-hidden="true"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-[1.25rem] border border-slate-200/60 bg-white/70">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-slate-700">
+                      <thead className="bg-slate-50/80 text-slate-700">
                         <tr>
-                          <th className="px-3 py-2">Color</th>
-                          <th className="px-3 py-2">Symbol</th>
-                          <th className="px-3 py-2">Yarn Color</th>
+                          <th className="px-4 py-3">Color</th>
+                          <th className="px-4 py-3">Symbol</th>
+                          <th className="px-4 py-3">Yarn Color</th>
                         </tr>
                       </thead>
                       <tbody>
                         {state.previewData.colorLegend.map((entry, index) => (
-                          <tr key={`${entry.symbol}-${entry.hex}-${index}`} className="border-t border-slate-100">
-                            <td className="px-3 py-2">
+                          <tr key={`${entry.symbol}-${entry.hex}-${index}`} className="border-t border-slate-100/90">
+                            <td className="px-4 py-3">
                               <span
-                                className="inline-block h-5 w-5 rounded border border-slate-300"
+                                className="inline-block h-6 w-6 rounded-full border-2 border-white shadow-sm"
                                 style={{ backgroundColor: entry.hex }}
                                 aria-label={`Color ${entry.hex}`}
                               />
                             </td>
-                            <td className="px-3 py-2 font-semibold">{entry.symbol}</td>
-                            <td className="px-3 py-2">{getYarnDisplayName(entry)}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-900">{entry.symbol}</td>
+                            <td className="px-4 py-3 text-slate-700">{getYarnDisplayName(entry)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -749,7 +913,7 @@ export default function HomePage() {
                   type="button"
                   onClick={handleCheckout}
                   disabled={state.loadingMessage !== null || state.step === 'buying'}
-                  className="w-full rounded-xl bg-emerald-600 px-6 py-4 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="success-button w-full rounded-[1.4rem] px-6 py-4 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Buy PDF Pattern
                 </button>
