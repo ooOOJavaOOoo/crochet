@@ -41,6 +41,14 @@ function rleRow(row: number[], palette: PaletteEntry[]): string {
   return parts.join(', ');
 }
 
+function getInstructionColorKeyLine(entry: PaletteEntry): string {
+  const resolvedColorName = entry.yarnColorName ?? entry.name ?? 'Unknown';
+  const withBrand = entry.yarnBrand
+    ? `${entry.yarnBrand} ${resolvedColorName}`
+    : resolvedColorName;
+  return `${entry.symbol} = ${withBrand} (${entry.hex})`;
+}
+
 function wrapText(
   text: string,
   font: PDFFont,
@@ -300,6 +308,25 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
           },
         );
         y -= 24;
+
+        page.drawText('Instruction Color Key (symbol = yarn brand + color):', {
+          x: MARGIN,
+          y,
+          size: 9,
+          font: helveticaBold,
+          color: black,
+        });
+        y -= LINE_HEIGHT;
+
+        for (const paletteEntry of pattern.palette) {
+          const keyLine = getInstructionColorKeyLine(paletteEntry);
+          const keyWrapped = wrapText(keyLine, helvetica, 9, CONTENT_WIDTH);
+          for (const wrapped of keyWrapped) {
+            page.drawText(wrapped, { x: MARGIN, y, size: 9, font: helvetica, color: gray });
+            y -= LINE_HEIGHT;
+          }
+        }
+        y -= 8;
 
         if (isC2C) {
           const noteLines = wrapText(
