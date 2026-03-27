@@ -20,6 +20,20 @@ const schema = z.object({
   patternId: z.string().min(1),
 });
 
+function resolveAppUrl(request: Request): string {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  return new URL(request.url).origin;
+}
+
 export async function POST(request: Request): Promise<Response> {
   let body: unknown;
   try {
@@ -46,11 +60,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Pattern not found' }, { status: 404 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!appUrl) {
-    console.error('[POST /api/checkout] NEXT_PUBLIC_APP_URL is not set');
-    return Response.json({ error: 'Server misconfiguration' }, { status: 500 });
-  }
+  const appUrl = resolveAppUrl(request);
 
   let session: Stripe.Checkout.Session;
   try {

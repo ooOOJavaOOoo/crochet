@@ -7,6 +7,20 @@ import type { StoredCheckout, StoredDownloadToken } from '@/lib/types';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function resolveAppUrl(request: Request): string {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  return new URL(request.url).origin;
+}
+
 function getStripeClient(): Stripe | null {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -118,7 +132,7 @@ export async function POST(request: Request): Promise<Response> {
   const customerEmail = session.customer_details?.email;
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.FROM_EMAIL;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const appUrl = resolveAppUrl(request);
 
   if (customerEmail && resendApiKey && fromEmail) {
     const downloadUrl = `${appUrl}/api/download/${token}`;
