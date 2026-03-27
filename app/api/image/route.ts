@@ -5,6 +5,7 @@ import {
   getGoogleVertexProject,
   IMAGEN_FAST_MODEL,
 } from '@/lib/models';
+import { ensureGoogleCredentialsFile } from '@/lib/googleCredentials.node';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 
 export async function POST(request: Request) {
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
         headers: { 'content-type': 'application/json' },
       });
     }
+
+    ensureGoogleCredentialsFile();
 
     const location = getGoogleVertexLocation();
 
