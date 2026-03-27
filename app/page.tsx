@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useReducer } from 'react';
+import { ChangeEvent, useEffect, useReducer } from 'react';
 import type { PatternData, StitchType, YarnWeight } from '@/lib/types';
 import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook } from '@/lib/yarnWeight';
 
@@ -50,17 +50,79 @@ const YARN_BRANDS = [
 ];
 
 const HERO_SWATCHES = [
-  { name: 'Berry Pop', hex: '#dc5a87' },
-  { name: 'Sunny Gold', hex: '#f4b544' },
-  { name: 'Mint Loop', hex: '#7bc8a4' },
-  { name: 'Sky Stitch', hex: '#73c7d9' },
-  { name: 'Coral Twist', hex: '#f26f63' },
+  { name: 'Terracotta Thread', hex: '#b85c38' },
+  { name: 'Oat Gold', hex: '#d89e58' },
+  { name: 'Moss Loop', hex: '#35624a' },
+  { name: 'Denim Stitch', hex: '#2e5e8a' },
+  { name: 'Walnut Warmth', hex: '#6f4f3a' },
 ];
 
 const CROCHET_FEATURES = [
-  'Match your yarn palette before generating the chart.',
-  'Preview the stitch map with a colorful legend and watermark-safe sample.',
-  'Check out with one click when the pattern looks right.',
+  'Design faster while keeping your crochet style intact.',
+  'Generate listing-ready visuals and clean chart previews.',
+  'Deliver secure instant downloads when customers are ready to buy.',
+];
+
+const TRUST_POINTS = [
+  'Secure checkout and instant PDF delivery',
+  'Commercial-use friendly outputs for maker shops',
+  'Edit and regenerate before purchasing your final pattern',
+];
+
+const HOW_IT_WORKS_STEPS = [
+  {
+    title: 'Describe your idea',
+    description: 'Upload your image and choose yarn-aware settings for size, stitch, and color count.',
+  },
+  {
+    title: 'Generate pattern and preview',
+    description: 'See a watermarked chart and color legend before committing to the full download.',
+  },
+  {
+    title: 'Checkout and deliver',
+    description: 'Unlock the complete PDF pattern and yarn inventory with one secure purchase.',
+  },
+];
+
+const TESTIMONIALS = [
+  {
+    quote:
+      'I turned a custom pet portrait order into a polished pattern in one evening and shipped it the same day.',
+    author: 'Lina, Etsy seller',
+  },
+  {
+    quote:
+      'The previews help me catch color issues fast. I use less yarn and avoid rework on large blankets.',
+    author: 'Monique, pattern designer',
+  },
+  {
+    quote:
+      'It feels like having a technical editor in my studio. The charts are cleaner than my old manual workflow.',
+    author: 'Sofia, crochet instructor',
+  },
+];
+
+const FAQ_ITEMS = [
+  {
+    question: 'Can I edit the generated pattern before I sell it?',
+    answer:
+      'Yes. You can regenerate with different settings and finalize your preferred chart before checkout.',
+  },
+  {
+    question: 'Do I need advanced crochet skills to use this?',
+    answer:
+      'No. Presets and gauge hints help beginners start quickly, while advanced makers can fine-tune all settings.',
+  },
+  {
+    question: 'What do I get after checkout?',
+    answer:
+      'You receive the full downloadable PDF pattern with complete legend and yarn inventory details.',
+  },
+  {
+    question: 'Are outputs okay for shop listings and commercial use?',
+    answer:
+      'Yes. Generated outputs are designed for maker storefront workflows including listing visuals and product-ready patterns.',
+  },
 ];
 
 const STUDIO_THEME_IMAGES = [
@@ -72,7 +134,7 @@ const STUDIO_THEME_IMAGES = [
   {
     label: 'Colorful yarn wall',
     src: '/studio-yarn-wall.svg',
-    palette: ['#dc5a87', '#f4b544', '#73c7d9', '#9b7bd3'],
+    palette: ['#b85c38', '#d89e58', '#2e5e8a', '#35624a'],
   },
   {
     label: 'Crochet blanket close-up',
@@ -419,7 +481,7 @@ export default function HomePage() {
   const isCustomPreset = state.presetIndex === BLANKET_PRESETS.length - 1;
 
   return (
-    <div className="crochet-page min-h-screen text-slate-900">
+    <div className="crochet-page min-h-screen text-[color:var(--foreground)]">
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="crochet-hero mb-8 rounded-[2rem] px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
           <div aria-hidden="true" className="skein skein-peach float-gentle right-6 top-6 hidden lg:block" />
@@ -432,25 +494,25 @@ export default function HomePage() {
             <div className="relative z-10">
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <span className="hero-badge text-xs font-semibold uppercase tracking-[0.22em]">Crochet Studio</span>
-                <span className="rounded-full border border-white/60 bg-white/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-800">
-                  Yarn-first UI refresh
+                <span className="rounded-full border border-[color:var(--border-soft)] bg-white/65 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
+                  Heirloom Hearth
                 </span>
               </div>
 
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div className="max-w-3xl">
-                  <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                    Turn photos into bright, yarn-ready crochet patterns.
+                  <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl lg:text-6xl">
+                    From yarn idea to shop-ready pattern, beautifully fast.
                   </h1>
-                  <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 sm:text-lg">
-                    Upload a favorite image, tune the palette and stitch settings, then preview the chart in a page that feels handmade instead of clinical.
+                  <p className="mt-4 max-w-2xl text-base leading-7 text-[color:var(--text-secondary)] sm:text-lg">
+                    Upload an image, shape your stitch and yarn settings, and generate polished chart previews made for creators and maker shops.
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => dispatch({ type: 'Reset' })}
-                  className="secondary-button shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700"
+                  className="secondary-button shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold text-[color:var(--foreground)]"
                 >
                   Start Over
                 </button>
@@ -458,25 +520,33 @@ export default function HomePage() {
 
               <div className="mb-6 grid gap-3 sm:grid-cols-3">
                 {CROCHET_FEATURES.map((feature) => (
-                  <div key={feature} className="feature-pill rounded-2xl px-4 py-4 text-sm leading-6 text-slate-700">
+                  <div key={feature} className="feature-pill rounded-2xl px-4 py-4 text-sm leading-6 text-[color:var(--text-secondary)]">
                     {feature}
                   </div>
                 ))}
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-secondary)]">
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Preset: {currentPresetLabel}</span>
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Colors: {state.colorCount}</span>
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Hook: {state.hookSize}</span>
                 <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Brand: {YARN_BRANDS.find((brand) => brand.value === state.brandId)?.label ?? 'Any'}</span>
+              </div>
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                {TRUST_POINTS.map((point) => (
+                  <div key={point} className="trust-card rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-secondary)]">
+                    {point}
+                  </div>
+                ))}
               </div>
             </div>
 
             <aside className="crochet-card-soft shine-surface relative z-10 rounded-[1.75rem] p-5 sm:p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Studio palette</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">Colorful by default</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-secondary)]">Studio palette</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">Craft-toned by default</h2>
                 </div>
                 <div className="flex -space-x-2">
                   {HERO_SWATCHES.map((swatch) => (
@@ -503,29 +573,29 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <div className="rounded-[1.5rem] border border-white/60 bg-white/75 p-4">
+              <div className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-white/75 p-4">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-700">Project recipe</p>
-                    <p className="mt-1 text-sm text-slate-600">Balanced for quick previews and colorful finished PDFs.</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--brand-secondary)]">Project recipe</p>
+                    <p className="mt-1 text-sm text-[color:var(--text-secondary)]">Balanced for fast previews and polished finished PDFs.</p>
                   </div>
-                  <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-amber-800">
+                  <div className="rounded-full bg-[color:var(--surface-subtle)] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--brand-primary)]">
                     Ready to stitch
                   </div>
                 </div>
 
-                <div className="space-y-3 text-sm text-slate-700">
-                  <div className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3">
+                <div className="space-y-3 text-sm text-[color:var(--text-secondary)]">
+                  <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
                     <span>Stitch mode</span>
-                    <span className="font-semibold text-slate-900">{state.stitchType === 'tapestry' ? 'Tapestry' : 'C2C'}</span>
+                    <span className="font-semibold text-[color:var(--foreground)]">{state.stitchType === 'tapestry' ? 'Tapestry' : 'C2C'}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-sky-50 px-4 py-3">
+                  <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
                     <span>Yarn weight</span>
-                    <span className="font-semibold text-slate-900">{getYarnWeightConfig(state.yarnWeight).label}</span>
+                    <span className="font-semibold text-[color:var(--foreground)]">{getYarnWeightConfig(state.yarnWeight).label}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
+                  <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
                     <span>Grid size</span>
-                    <span className="font-semibold text-slate-900">{state.gridWidth} x {state.gridHeight}</span>
+                    <span className="font-semibold text-[color:var(--foreground)]">{state.gridWidth} x {state.gridHeight}</span>
                   </div>
                 </div>
               </div>
@@ -541,16 +611,16 @@ export default function HomePage() {
           {state.loadingMessage && <div className="banner banner-info">{state.loadingMessage}</div>}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <div id="generator" className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <section className="space-y-6">
             <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-700">Step 1</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">Choose your image</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary)]">Step 1</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">Choose your image</h2>
                 </div>
-                <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-                  <span className="swatch-dot !h-3 !w-3" style={{ backgroundColor: '#f26f63' }} />
+                <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-secondary)]">
+                  <span className="swatch-dot !h-3 !w-3" style={{ backgroundColor: '#b85c38' }} />
                   Photo to pattern
                 </div>
               </div>
@@ -566,7 +636,7 @@ export default function HomePage() {
                   onChange={handleFileUpload}
                   className="form-input block"
                 />
-                <p className="text-sm leading-6 text-slate-600">
+                <p className="text-sm leading-6 text-[color:var(--text-secondary)]">
                   Portraits, pets, florals, and graphic art all work. Start with a clean subject and strong contrast for the best chart.
                 </p>
               </div>
@@ -575,10 +645,10 @@ export default function HomePage() {
             <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-700">Step 2</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">Pattern settings</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-secondary)]">Step 2</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">Pattern settings</h2>
                 </div>
-                <div className="rounded-full bg-violet-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+                <div className="rounded-full bg-[color:var(--surface-subtle)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
                   Fine tune the yarn math
                 </div>
               </div>
@@ -639,9 +709,9 @@ export default function HomePage() {
                   </div>
                 )}
 
-                <div className="rounded-[1.5rem] bg-gradient-to-r from-rose-50 via-amber-50 to-sky-50 px-4 py-4">
+                <div className="rounded-[1.5rem] bg-gradient-to-r from-[rgba(184,92,56,0.08)] via-[rgba(216,158,88,0.12)] to-[rgba(46,94,138,0.08)] px-4 py-4">
                   <label htmlFor="color-count" className="form-label mb-2">
-                    Number of colors: <span className="text-slate-900">{state.colorCount}</span>
+                    Number of colors: <span className="text-[color:var(--foreground)]">{state.colorCount}</span>
                   </label>
                   <input
                     id="color-count"
@@ -658,14 +728,14 @@ export default function HomePage() {
                     {HERO_SWATCHES.slice(0, Math.min(state.colorCount, HERO_SWATCHES.length)).map((swatch) => (
                       <span
                         key={swatch.name}
-                        className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700"
+                        className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-[color:var(--text-secondary)]"
                       >
                         {swatch.name}
                       </span>
                     ))}
                   </div>
                   {state.colorCount <= 4 && (
-                    <p className="mt-3 rounded-2xl border border-amber-200 bg-white/70 px-3 py-3 text-xs leading-5 text-amber-900">
+                    <p className="mt-3 rounded-2xl border border-[color:var(--border-strong)] bg-white/70 px-3 py-3 text-xs leading-5 text-[color:var(--foreground)]">
                       Very low color counts can flatten details. Increase the slider if the preview feels too simplified.
                     </p>
                   )}
@@ -689,7 +759,7 @@ export default function HomePage() {
                       C2C (Corner-to-Corner)
                     </button>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
                     {state.stitchType === 'tapestry'
                       ? getYarnWeightConfig(state.yarnWeight).tapestryGaugeHint
                       : getYarnWeightConfig(state.yarnWeight).c2cGaugeHint}
@@ -775,7 +845,7 @@ export default function HomePage() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
                       Limit the palette to yarn you already own and keep your final shopping list realistic.
                     </p>
                   </div>
@@ -797,16 +867,16 @@ export default function HomePage() {
             <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Preview board</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-slate-900">See the chart before you buy</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-secondary)]">Preview board</p>
+                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">See the chart before you buy</h2>
                 </div>
-                <div className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <div className="rounded-full bg-[color:var(--surface-subtle)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
                   Watermarked sample
                 </div>
               </div>
 
               {activeQualityWarnings.length > 0 && (
-                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                <div className="mb-4 rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-4 py-3 text-sm leading-6 text-[color:var(--foreground)]">
                   {activeQualityWarnings[0]}
                 </div>
               )}
@@ -823,7 +893,7 @@ export default function HomePage() {
                     className="absolute inset-3 rounded-[1.1rem]"
                     style={{
                       backgroundImage:
-                        'linear-gradient(to right, rgba(43,33,64,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(43,33,64,0.16) 1px, transparent 1px)',
+                        'linear-gradient(to right, rgba(90,72,56,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(90,72,56,0.15) 1px, transparent 1px)',
                       backgroundSize: '12px 12px',
                       backgroundPosition: '0 0, 0 0',
                       pointerEvents: 'none',
@@ -831,7 +901,7 @@ export default function HomePage() {
                   />
                 </div>
               ) : (
-                <div className="preview-frame flex min-h-72 items-center justify-center rounded-[1.5rem] px-6 text-center text-sm leading-6 text-slate-500">
+                <div className="preview-frame flex min-h-72 items-center justify-center rounded-[1.5rem] px-6 text-center text-sm leading-6 text-[color:var(--text-secondary)]">
                   Your uploaded image preview appears here once you add a photo.
                 </div>
               )}
@@ -841,8 +911,8 @@ export default function HomePage() {
               <>
                 <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="font-display text-2xl font-semibold text-slate-900">{state.previewData.title}</h3>
-                    <div className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                    <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">{state.previewData.title}</h3>
+                    <div className="mono-meta rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-secondary)]">
                       {state.previewData.totalRows} rows in chart
                     </div>
                   </div>
@@ -854,7 +924,7 @@ export default function HomePage() {
                     />
                     {state.previewData.isWatermarked && (
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div className="rotate-[-18deg] text-3xl font-black uppercase tracking-[0.18em] text-slate-900/18 sm:text-5xl">
+                        <div className="rotate-[-18deg] text-3xl font-black uppercase tracking-[0.18em] text-[color:var(--foreground)]/20 sm:text-5xl">
                           Preview Only
                         </div>
                       </div>
@@ -865,8 +935,8 @@ export default function HomePage() {
                 <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="font-display text-2xl font-semibold text-slate-900">Color legend</h3>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                      <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">Color legend</h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-[color:var(--text-secondary)]">
                         Preview includes {state.previewData.colorLegend.length} of {state.previewData.totalLegendCount} colors.
                         {state.previewData.hiddenLegendCount > 0
                           ? ` Purchase the PDF to unlock the remaining ${state.previewData.hiddenLegendCount} colors and full yarn inventory.`
@@ -885,9 +955,9 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto rounded-[1.25rem] border border-slate-200/60 bg-white/70">
+                  <div className="overflow-x-auto rounded-[1.25rem] border border-[color:var(--border-soft)] bg-white/70">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="bg-slate-50/80 text-slate-700">
+                      <thead className="bg-[color:var(--surface-subtle)]/80 text-[color:var(--text-secondary)]">
                         <tr>
                           <th className="px-4 py-3">Color</th>
                           <th className="px-4 py-3">Symbol</th>
@@ -896,7 +966,7 @@ export default function HomePage() {
                       </thead>
                       <tbody>
                         {state.previewData.colorLegend.map((entry, index) => (
-                          <tr key={`${entry.symbol}-${entry.hex}-${index}`} className="border-t border-slate-100/90">
+                          <tr key={`${entry.symbol}-${entry.hex}-${index}`} className="border-t border-[color:var(--border-soft)]/60">
                             <td className="px-4 py-3">
                               <span
                                 className="inline-block h-6 w-6 rounded-full border-2 border-white shadow-sm"
@@ -904,8 +974,8 @@ export default function HomePage() {
                                 aria-label={`Color ${entry.hex}`}
                               />
                             </td>
-                            <td className="px-4 py-3 font-semibold text-slate-900">{entry.symbol}</td>
-                            <td className="px-4 py-3 text-slate-700">{getYarnDisplayName(entry)}</td>
+                            <td className="px-4 py-3 font-semibold text-[color:var(--foreground)]">{entry.symbol}</td>
+                            <td className="px-4 py-3 text-[color:var(--text-secondary)]">{getYarnDisplayName(entry)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -925,7 +995,64 @@ export default function HomePage() {
             )}
           </section>
         </div>
+
+        <section className="mt-10 grid gap-6 lg:grid-cols-3">
+          {HOW_IT_WORKS_STEPS.map((step, index) => (
+            <article key={step.title} className="trust-card rounded-[1.5rem] p-5 sm:p-6">
+              <p className="mono-meta text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">
+                Step {index + 1}
+              </p>
+              <h3 className="font-display mt-3 text-2xl font-semibold text-[color:var(--foreground)]">{step.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--text-secondary)]">{step.description}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-3">
+          {TESTIMONIALS.map((testimonial) => (
+            <blockquote key={testimonial.author} className="trust-card rounded-[1.5rem] p-5 sm:p-6">
+              <p className="text-base leading-7 text-[color:var(--foreground)]">&ldquo;{testimonial.quote}&rdquo;</p>
+              <footer className="mono-meta mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
+                {testimonial.author}
+              </footer>
+            </blockquote>
+          ))}
+        </section>
+
+        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/65 p-6 sm:p-8">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-3xl font-semibold text-[color:var(--foreground)]">Frequently asked questions</h2>
+            <p className="mono-meta text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--brand-secondary)]">
+              Built for real maker workflows
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {FAQ_ITEMS.map((faq) => (
+              <details key={faq.question} className="faq-item rounded-2xl px-4 py-3">
+                <summary className="cursor-pointer text-sm font-semibold text-[color:var(--foreground)]">{faq.question}</summary>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-gradient-to-r from-[rgba(184,92,56,0.11)] to-[rgba(53,98,74,0.11)] px-6 py-8 sm:px-8 sm:py-10">
+          <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
+            <div>
+              <h2 className="font-display text-3xl font-semibold text-[color:var(--foreground)] sm:text-4xl">
+                Publish your first pattern today
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-[color:var(--text-secondary)] sm:text-base">
+                Keep your generated draft momentum: start now, preview fast, and check out only when your chart looks right.
+              </p>
+            </div>
+            <a href="#generator" className="primary-button rounded-2xl px-6 py-3 text-sm font-semibold text-white">
+              Create My First Pattern
+            </a>
+          </div>
+        </section>
       </main>
     </div>
   );
 }
+

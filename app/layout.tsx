@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist_Mono, Nunito } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-const nunito = Nunito({
-  variable: "--font-nunito",
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
 });
 
@@ -12,8 +12,9 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
   subsets: ["latin"],
 });
 
@@ -31,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${nunito.variable} ${fraunces.variable} ${geistMono.variable} antialiased`}
+        className={`${plusJakartaSans.variable} ${fraunces.variable} ${spaceMono.variable} antialiased`}
       >
         {children}
       </body>
