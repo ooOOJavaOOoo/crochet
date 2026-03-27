@@ -43,7 +43,6 @@ const BLANKET_PRESETS: BlanketPreset[] = [
 ];
 
 const YARN_BRANDS = [
-  { value: '', label: 'No preference' },
   { value: 'red-heart', label: 'Red Heart' },
   { value: 'bernat', label: 'Bernat' },
   { value: 'lion-brand', label: 'Lion Brand' },
@@ -64,6 +63,7 @@ interface State {
   brandId: string;
   availableYarnColors: YarnColorOption[];
   selectedYarnColorIds: string[];
+  useAiColorMatch: boolean;
   patternData: PatternData | null;
   previewData: PreviewData | null;
   loadingMessage: string | null;
@@ -85,6 +85,7 @@ type Action =
   | { type: 'SetBrandId'; brandId: string }
   | { type: 'SetAvailableYarnColors'; colors: YarnColorOption[] }
   | { type: 'SetSelectedYarnColorIds'; colorIds: string[] }
+  | { type: 'SetAiColorMatch'; useAiColorMatch: boolean }
   | { type: 'SetPatternData'; patternData: PatternData | null }
   | { type: 'SetPreviewData'; previewData: PreviewData | null }
   | { type: 'SetLoadingMessage'; loadingMessage: string | null }
@@ -105,9 +106,10 @@ const INITIAL_STATE: State = {
   stitchType: 'tapestry',
   yarnWeight: DEFAULT_YARN_WEIGHT,
   hookSize: getDefaultHook(DEFAULT_YARN_WEIGHT, 'tapestry'),
-  brandId: '',
+  brandId: 'red-heart',
   availableYarnColors: [],
   selectedYarnColorIds: [],
+  useAiColorMatch: false,
   patternData: null,
   previewData: null,
   loadingMessage: null,
@@ -161,6 +163,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, availableYarnColors: action.colors };
     case 'SetSelectedYarnColorIds':
       return { ...state, selectedYarnColorIds: action.colorIds };
+    case 'SetAiColorMatch':
+      return { ...state, useAiColorMatch: action.useAiColorMatch };
     case 'SetPatternData':
       return { ...state, patternData: action.patternData };
     case 'SetPreviewData':
@@ -407,6 +411,7 @@ export default function HomePage() {
           brandId: state.brandId || undefined,
           selectedYarnColorIds:
             state.selectedYarnColorIds.length > 0 ? state.selectedYarnColorIds : undefined,
+          useAiColorMatch: state.useAiColorMatch,
         }),
       });
 
@@ -585,7 +590,7 @@ export default function HomePage() {
                     id="color-count"
                     type="range"
                     min={2}
-                    max={12}
+                    max={25}
                     value={state.colorCount}
                     onChange={(event) => dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })}
                     className="w-full"
@@ -707,6 +712,26 @@ export default function HomePage() {
                     </p>
                   </div>
                 )}
+
+                <div className="flex items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3">
+                  <input
+                    id="ai-color-match"
+                    type="checkbox"
+                    checked={state.useAiColorMatch}
+                    onChange={(event) =>
+                      dispatch({ type: 'SetAiColorMatch', useAiColorMatch: event.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-violet-700"
+                  />
+                  <div>
+                    <label htmlFor="ai-color-match" className="block text-sm font-medium text-slate-700 cursor-pointer">
+                      AI best color match
+                    </label>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Use AI to select the most visually accurate yarn colors for your palette instead of the standard color-distance algorithm.
+                    </p>
+                  </div>
+                </div>
 
                 <div>
                   <label htmlFor="recommend-prompt" className="mb-1 block text-sm font-medium text-slate-700">

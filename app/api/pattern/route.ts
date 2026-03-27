@@ -9,7 +9,8 @@ import type { PatternData, StoredPattern } from '@/lib/types';
 import { type QuantizeResult } from '@/lib/pattern';
 import { generateTitle } from '@/lib/prompts/titleGenerator';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
-import { getFriendlyColorName } from '@/lib/yarn';
+import { getFriendlyColorName, findYarnColorByName } from '@/lib/yarn';
+import { matchColors, type YarnBrand } from '@/lib/prompts/colorMatcher';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -24,6 +25,7 @@ const schema = z.object({
   stitchType: z.enum(['tapestry', 'c2c']).optional().default('tapestry'),
   yarnWeight: z.enum(['fingering', 'sport', 'dk', 'worsted', 'bulky', 'super-bulky']).optional().default('worsted'),
   hookSize: z.string().max(30).optional(),
+  useAiColorMatch: z.boolean().optional().default(false),
 });
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -47,7 +49,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType, yarnWeight, hookSize } = parsed.data;
+    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType, yarnWeight, hookSize, useAiColorMatch } = parsed.data;
 
     // Strip optional data URI prefix and validate decoded size
     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -70,6 +72,31 @@ export async function POST(request: Request): Promise<Response> {
       yarnWeight,
       hookSize,
     });
+
+    // Apply AI color matching if requested
+    if (useAiColorMatch && rawPattern.palette.length > 0) {
+      const hexColors = rawPattern.palette.map((p) => p.hex);
+      const colorResult = await matchColors({ hexColors, yarnBrand: brandId as YarnBrand | undefined });
+      const BRAND_NAME_TO_ID: Record<string, string> = {
+        'lion brand': 'lion-brand',
+        'red heart': 'red-heart',
+        'caron': 'caron',
+        'paintbox': 'paintbox',
+      };
+      for (let i = 0; i < rawPattern.palette.length; i++) {
+        const aiColor = colorResult.colors[i];
+        if (!aiColor) continue;
+        const matchedBrandId = BRAND_NAME_TO_ID[aiColor.yarnMatch.brand.toLowerCase()];
+        if (!matchedBrandId) continue;
+        const yarnRecord = findYarnColorByName(matchedBrandId, aiColor.yarnMatch.colorName);
+        if (yarnRecord) {
+          rawPattern.palette[i].hex = yarnRecord.hex;
+          rawPattern.palette[i].name = yarnRecord.name;
+          rawPattern.palette[i].yarnBrand = yarnRecord.brand;
+          rawPattern.palette[i].yarnColorName = yarnRecord.name;
+        }
+      }
+    }
 
     const patternId = generatePatternId();
 

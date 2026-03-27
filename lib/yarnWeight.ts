@@ -15,6 +15,10 @@ export interface YarnWeightConfig {
   defaultTapestryHook: string; // label string matching one of hookOptions
   defaultC2cHook: string;
   hookOptions: HookOption[];
+  /** Gauge for physical size calculations */
+  tapestryStitchesPerInch: number;
+  tapestryRowsPerInch: number;
+  c2cBlocksPerInch: number;
 }
 
 export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
@@ -34,6 +38,9 @@ export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
       { mm: 2.5,  label: '2.5mm (C-2)' },
       { mm: 3.0,  label: '3.0mm (D-3)' },
     ],
+    tapestryStitchesPerInch: 8,
+    tapestryRowsPerInch: 9,
+    c2cBlocksPerInch: 2,
   },
   {
     id: 'sport',
@@ -51,6 +58,9 @@ export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
       { mm: 3.25, label: '3.25mm (D-3)' },
       { mm: 3.5,  label: '3.5mm (E-4)' },
     ],
+    tapestryStitchesPerInch: 6,
+    tapestryRowsPerInch: 7,
+    c2cBlocksPerInch: 1.5,
   },
   {
     id: 'dk',
@@ -68,6 +78,9 @@ export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
       { mm: 4.0,  label: '4.0mm (G-6)' },
       { mm: 4.5,  label: '4.5mm (#7)' },
     ],
+    tapestryStitchesPerInch: 5,
+    tapestryRowsPerInch: 6,
+    c2cBlocksPerInch: 1.2,
   },
   {
     id: 'worsted',
@@ -84,6 +97,9 @@ export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
       { mm: 5.0, label: '5.0mm (H-8)' },
       { mm: 5.5, label: '5.5mm (I-9)' },
     ],
+    tapestryStitchesPerInch: 4,
+    tapestryRowsPerInch: 5,
+    c2cBlocksPerInch: 1,
   },
   {
     id: 'bulky',
@@ -101,6 +117,9 @@ export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
       { mm: 7.0, label: '7.0mm' },
       { mm: 8.0, label: '8.0mm (L-11)' },
     ],
+    tapestryStitchesPerInch: 3,
+    tapestryRowsPerInch: 3.5,
+    c2cBlocksPerInch: 0.75,
   },
   {
     id: 'super-bulky',
@@ -118,6 +137,9 @@ export const YARN_WEIGHT_CONFIGS: YarnWeightConfig[] = [
       { mm: 12.0, label: '12.0mm (P/Q)' },
       { mm: 15.0, label: '15.0mm (P/Q-16)' },
     ],
+    tapestryStitchesPerInch: 2,
+    tapestryRowsPerInch: 2.5,
+    c2cBlocksPerInch: 0.5,
   },
 ];
 
