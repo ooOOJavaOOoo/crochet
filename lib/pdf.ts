@@ -1,6 +1,7 @@
 import { PDFDocument, PDFPage, PDFFont, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import { Resvg } from '@resvg/resvg-js';
 import type { PatternData, PaletteEntry } from './types';
+import { buildAmazonShoppingList } from './shopping';
 
 export interface PdfOptions {
   pattern: PatternData;
@@ -49,6 +50,37 @@ function getInstructionColorKeyLine(entry: PaletteEntry): string {
   return `${entry.symbol} = ${withBrand} (${entry.hex})`;
 }
 
+function formatYards(yards: number): string {
+  const rounded = Math.round(yards * 100) / 100;
+  return rounded.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+function pickYarnSuggestion(entry: { yarnBrand?: string; yarnColorName?: string }, palette: PaletteEntry): string {
+  const brand = entry.yarnBrand ?? palette.yarnBrand;
+  const color = entry.yarnColorName ?? palette.yarnColorName ?? palette.name;
+
+  if (brand && color) return `${brand} - ${color}`;
+  if (brand) return brand;
+  if (color) return color;
+  return 'Worsted weight';
+}
+
+function truncateToWidth(text: string, font: PDFFont, size: number, maxWidth: number): string {
+  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
+  const ellipsis = '...';
+  const ellipsisWidth = font.widthOfTextAtSize(ellipsis, size);
+  if (ellipsisWidth > maxWidth) return '';
+
+  let out = text;
+  while (out.length > 0 && font.widthOfTextAtSize(out, size) + ellipsisWidth > maxWidth) {
+    out = out.slice(0, -1);
+  }
+  return `${out}${ellipsis}`;
+}
+
 function wrapText(
   text: string,
   font: PDFFont,
@@ -74,6 +106,7 @@ function wrapText(
 
 export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   const { pattern, chartSvg } = opts;
+  const shoppingList = buildAmazonShoppingList(pattern);
 
   const doc = await PDFDocument.create();
   const helvetica = await doc.embedFont(StandardFonts.Helvetica);
@@ -181,15 +214,25 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     });
     y -= 32;
 
-    // Column X positions
+    // Column X positions and widths
     const cols = {
       symbol:     MARGIN,
-      colorName:  MARGIN + 48,
-      suggestion: MARGIN + 148,
-      hex:        MARGIN + 278,
-      stitches:   MARGIN + 338,
-      yards:      MARGIN + 395,
-      skeins:     MARGIN + 450,
+      colorName:  MARGIN + 50,
+      suggestion: MARGIN + 170,
+      hex:        MARGIN + 310,
+      stitches:   MARGIN + 378,
+      yards:      MARGIN + 430,
+      skeins:     MARGIN + 472,
+    };
+
+    const colWidths = {
+      symbol: 50,
+      colorName: 120,
+      suggestion: 140,
+      hex: 68,
+      stitches: 52,
+      yards: 42,
+      skeins: 43,
     };
 
     // Header row background
@@ -204,7 +247,7 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     const headers: Array<[keyof typeof cols, string]> = [
       ['symbol',     'Symbol'],
       ['colorName',  'Color Name'],
-      ['suggestion', 'Yarn Suggestion'],
+      ['suggestion', 'Yarn Brand & Color'],
       ['hex',        'Hex'],
       ['stitches',   'Stitches'],
       ['yards',      'Yards'],
@@ -239,32 +282,37 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
         color: black,
       });
 
-      const colorName = (pal.name ?? 'Unknown').slice(0, 14);
+      const colorName = truncateToWidth(pal.name ?? 'Unknown', helvetica, 9, colWidths.colorName - 2);
       page.drawText(colorName, { x: cols.colorName, y, size: 9, font: helvetica, color: black });
 
-      const suggestion =
-        pal.yarnBrand && pal.yarnColorName
-          ? `${pal.yarnBrand} ${pal.yarnColorName}`.slice(0, 18)
-          : 'Worsted weight';
+      const suggestion = truncateToWidth(
+        pickYarnSuggestion(entry, pal),
+        helvetica,
+        9,
+        colWidths.suggestion - 2,
+      );
       page.drawText(suggestion, { x: cols.suggestion, y, size: 9, font: helvetica, color: black });
 
       page.drawText(pal.hex, { x: cols.hex, y, size: 9, font: helvetica, color: black });
-      page.drawText(entry.totalStitches.toLocaleString(), {
-        x: cols.stitches,
+      const stitchesText = entry.totalStitches.toLocaleString();
+      page.drawText(stitchesText, {
+        x: cols.stitches + colWidths.stitches - helvetica.widthOfTextAtSize(stitchesText, 9),
         y,
         size: 9,
         font: helvetica,
         color: black,
       });
-      page.drawText(entry.yardsNeeded.toString(), {
-        x: cols.yards,
+      const yardsText = formatYards(entry.yardsNeeded);
+      page.drawText(yardsText, {
+        x: cols.yards + colWidths.yards - helvetica.widthOfTextAtSize(yardsText, 9),
         y,
         size: 9,
         font: helvetica,
         color: black,
       });
-      page.drawText(entry.skeinsNeeded.toString(), {
-        x: cols.skeins,
+      const skeinsText = entry.skeinsNeeded.toLocaleString();
+      page.drawText(skeinsText, {
+        x: cols.skeins + colWidths.skeins - helvetica.widthOfTextAtSize(skeinsText, 9),
         y,
         size: 9,
         font: helvetica,
@@ -284,7 +332,144 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   }
 
   // ---------------------------------------------------------------------------
-  // PAGE 3+ — Row-by-Row / Diagonal Instructions
+  // PAGE 3+ — Shopping List
+  // ---------------------------------------------------------------------------
+  {
+    const itemsBySection = [
+      {
+        title: 'Yarn',
+        items: shoppingList.filter((item) => item.category === 'yarn'),
+      },
+      {
+        title: 'Tools',
+        items: shoppingList.filter((item) => item.category === 'tool'),
+      },
+    ].filter((section) => section.items.length > 0);
+
+    if (itemsBySection.length > 0) {
+      const LINE_HEIGHT = 13;
+      let page = newPage();
+      let y = PAGE_HEIGHT - MARGIN;
+
+      const drawShoppingHeader = (): void => {
+        page.drawText('Shopping List', {
+          x: MARGIN,
+          y,
+          size: 18,
+          font: helveticaBold,
+          color: black,
+        });
+        y -= 20;
+
+        page.drawText(
+          'Auto-generated from your yarn inventory and recommended tools.',
+          {
+            x: MARGIN,
+            y,
+            size: 9,
+            font: helvetica,
+            color: gray,
+          },
+        );
+        y -= 22;
+      };
+
+      const beginNewShoppingPage = (): void => {
+        drawFooter(page);
+        page = newPage();
+        y = PAGE_HEIGHT - MARGIN;
+        drawShoppingHeader();
+      };
+
+      drawShoppingHeader();
+
+      for (const section of itemsBySection) {
+        if (y < MARGIN + LINE_HEIGHT * 5) {
+          beginNewShoppingPage();
+        }
+
+        page.drawText(section.title, {
+          x: MARGIN,
+          y,
+          size: 12,
+          font: helveticaBold,
+          color: black,
+        });
+        y -= 16;
+
+        for (const item of section.items) {
+          const qtyLine = `Qty: ${item.quantity} ${item.unit}`;
+          const titleLines = wrapText(`- ${item.title}`, helvetica, 10, CONTENT_WIDTH);
+
+          if (y < MARGIN + LINE_HEIGHT * (titleLines.length + 3)) {
+            beginNewShoppingPage();
+            page.drawText(section.title, {
+              x: MARGIN,
+              y,
+              size: 12,
+              font: helveticaBold,
+              color: black,
+            });
+            y -= 16;
+          }
+
+          for (const line of titleLines) {
+            page.drawText(line, {
+              x: MARGIN,
+              y,
+              size: 10,
+              font: helvetica,
+              color: black,
+            });
+            y -= LINE_HEIGHT;
+          }
+
+          page.drawText(qtyLine, {
+            x: MARGIN + 12,
+            y,
+            size: 9,
+            font: helvetica,
+            color: gray,
+          });
+          y -= LINE_HEIGHT;
+
+          if (item.notes) {
+            const noteLines = wrapText(item.notes, helvetica, 8, CONTENT_WIDTH - 12);
+            for (const noteLine of noteLines) {
+              if (y < MARGIN + LINE_HEIGHT) {
+                beginNewShoppingPage();
+                page.drawText(section.title, {
+                  x: MARGIN,
+                  y,
+                  size: 12,
+                  font: helveticaBold,
+                  color: black,
+                });
+                y -= 16;
+              }
+              page.drawText(noteLine, {
+                x: MARGIN + 12,
+                y,
+                size: 8,
+                font: helvetica,
+                color: gray,
+              });
+              y -= LINE_HEIGHT;
+            }
+          }
+
+          y -= 4;
+        }
+
+        y -= 8;
+      }
+
+      drawFooter(page);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // PAGE N — Row-by-Row / Diagonal Instructions
   // ---------------------------------------------------------------------------
   {
     const ROWS_PER_PAGE = 50;
@@ -366,7 +551,7 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   }
 
   // ---------------------------------------------------------------------------
-  // LAST PAGE — Stitch Chart
+  // FINAL PAGE — Stitch Chart
   // ---------------------------------------------------------------------------
   {
     const page = newPage();

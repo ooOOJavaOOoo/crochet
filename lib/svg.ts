@@ -80,6 +80,19 @@ function shouldRenderTickLabel(index: number, total: number, step: number): bool
   return (index + 1) % step === 0;
 }
 
+function toColumnLabel(colIndex: number): string {
+  let label = '';
+  let n = colIndex + 1;
+
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    label = String.fromCharCode(65 + rem) + label;
+    n = Math.floor((n - 1) / 26);
+  }
+
+  return label;
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -117,7 +130,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
 
     for (let col = 0; col < cols; col++) {
       if (!shouldRenderTickLabel(col, cols, colTickStep)) continue;
-      const label = String(col + 1);
+      const label = toColumnLabel(col);
       const x = chartX + col * CELL_SIZE + CELL_SIZE / 2;
 
       parts.push(
