@@ -8,6 +8,41 @@ import {
 import { ensureGoogleCredentialsFile } from '@/lib/googleCredentials.node';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 
+type ImagenAspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+
+const IMAGEN_ASPECT_RATIOS: Array<{ ratio: ImagenAspectRatio; value: number }> = [
+  { ratio: '1:1', value: 1 },
+  { ratio: '3:4', value: 3 / 4 },
+  { ratio: '4:3', value: 4 / 3 },
+  { ratio: '9:16', value: 9 / 16 },
+  { ratio: '16:9', value: 16 / 9 },
+];
+
+function normalizeAspectRatio(input: unknown): ImagenAspectRatio | undefined {
+  if (typeof input === 'string') {
+    if (IMAGEN_ASPECT_RATIOS.some((item) => item.ratio === input)) {
+      return input as ImagenAspectRatio;
+    }
+
+    const numericValue = Number(input);
+    if (!Number.isFinite(numericValue) || numericValue <= 0) {
+      return undefined;
+    }
+
+    input = numericValue;
+  }
+
+  if (typeof input !== 'number' || !Number.isFinite(input) || input <= 0) {
+    return undefined;
+  }
+
+  return IMAGEN_ASPECT_RATIOS.reduce((closest, current) => {
+    const currentDistance = Math.abs(current.value - input);
+    const closestDistance = Math.abs(closest.value - input);
+    return currentDistance < closestDistance ? current : closest;
+  }).ratio;
+}
+
 export async function POST(request: Request) {
   const rateLimit = await checkRateLimit(request, 'image');
   if (!rateLimit.allowed) {
@@ -17,6 +52,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { prompt, aspectRatio, sourceImage } = body;
+    const normalizedAspectRatio = normalizeAspectRatio(aspectRatio);
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'prompt is required.' }), {
@@ -50,7 +86,7 @@ export async function POST(request: Request) {
       model: vertex.image(IMAGEN_FAST_MODEL),
       prompt: imagePrompt,
       n: 1,
-      ...(aspectRatio ? { aspectRatio } : {}),
+      ...(normalizedAspectRatio ? { aspectRatio: normalizedAspectRatio } : {}),
     });
 
     const image = result.image;
