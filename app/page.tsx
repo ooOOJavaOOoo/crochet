@@ -497,23 +497,9 @@ export default function HomePage() {
                     key={item.label}
                     className={`studio-image-card ${index === 0 ? 'sm:col-span-2' : ''}`}
                     style={{ backgroundImage: `url(${item.src})` }}
-                  >
-                    <div className="studio-image-overlay" />
-                    <div className="studio-image-content">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/85">Studio inspiration</p>
-                      <p className="mt-1 text-sm font-semibold text-white">{item.label}</p>
-                      <div className="mt-3 flex items-center gap-2">
-                        {item.palette.map((tone) => (
-                          <span
-                            key={tone}
-                            className="h-3 w-6 rounded-full border border-white/70"
-                            style={{ backgroundColor: tone }}
-                            aria-label={`Palette color ${tone}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </article>
+                    aria-label={item.label}
+                    title={item.label}
+                  />
                 ))}
               </div>
 
@@ -849,36 +835,6 @@ export default function HomePage() {
                   Your uploaded image preview appears here once you add a photo.
                 </div>
               )}
-            </div>
-
-            <div className="crochet-card-soft rounded-[1.75rem] p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Decorative details</p>
-              <h3 className="font-display mt-2 text-2xl font-semibold text-slate-900">A brighter workspace</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-700">
-                Studio color references and crochet image texture keep the workspace centered on yarn and finished blanket art.
-              </p>
-              <div className="mt-4 flex items-center gap-2">
-                {HERO_SWATCHES.map((swatch) => (
-                  <span
-                    key={swatch.name}
-                    className="h-6 w-10 rounded-full border border-white/80 shadow-sm"
-                    style={{ backgroundColor: swatch.hex }}
-                    aria-label={swatch.name}
-                    title={swatch.name}
-                  />
-                ))}
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {STUDIO_THEME_IMAGES.map((item) => (
-                  <div
-                    key={`mini-${item.label}`}
-                    className="h-20 rounded-xl border border-white/60 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${item.src})` }}
-                    aria-label={item.label}
-                    title={item.label}
-                  />
-                ))}
-              </div>
             </div>
 
             {state.previewData && (
