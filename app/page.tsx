@@ -52,7 +52,6 @@ const YARN_BRANDS = [
 interface State {
   step: Step;
   imageBase64: string | null;
-  recommendPrompt: string;
   presetIndex: number;
   gridWidth: number;
   gridHeight: number;
@@ -74,7 +73,6 @@ interface State {
 type Action =
   | { type: 'SetStep'; step: Step }
   | { type: 'SetImageBase64'; imageBase64: string | null }
-  | { type: 'SetRecommendPrompt'; recommendPrompt: string }
   | { type: 'SetPreset'; presetIndex: number; width: number; height: number }
   | { type: 'SetGridWidth'; gridWidth: number }
   | { type: 'SetGridHeight'; gridHeight: number }
@@ -98,7 +96,6 @@ const initialPreset = BLANKET_PRESETS[1];
 const INITIAL_STATE: State = {
   step: 'image',
   imageBase64: null,
-  recommendPrompt: '',
   presetIndex: 1,
   gridWidth: initialPreset.width,
   gridHeight: initialPreset.height,
@@ -123,8 +120,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, step: action.step };
     case 'SetImageBase64':
       return { ...state, imageBase64: action.imageBase64, previewData: null, patternData: null };
-    case 'SetRecommendPrompt':
-      return { ...state, recommendPrompt: action.recommendPrompt };
     case 'SetPreset':
       return {
         ...state,
@@ -343,23 +338,21 @@ export default function HomePage() {
   };
 
   const handleRecommend = async () => {
-    if (!state.recommendPrompt.trim()) {
-      dispatch({ type: 'SetError', error: 'Enter a recommendation prompt first.' });
-      return;
-    }
-
     try {
       dispatch({ type: 'SetError', error: null });
       dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Applying AI recommendation...' });
 
       const sourceImage = state.imageBase64 ?? undefined;
       const aspectRatio = sourceImage ? await getImageAspectRatio(sourceImage) : undefined;
+      const prompt = sourceImage
+        ? 'Create a cleaner, crochet-friendly version of this image with strong contrast and simplified color blocks.'
+        : 'Create a crochet-friendly image with strong contrast and simplified color blocks.';
 
       const res = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: state.recommendPrompt.trim(),
+          prompt,
           sourceImage,
           aspectRatio,
         }),
@@ -755,27 +748,10 @@ export default function HomePage() {
                   </div>
                 )}
 
-                <div>
-                  <label htmlFor="recommend-prompt" className="mb-1 block text-sm font-medium text-slate-700">
-                    AI recommendation prompt
-                  </label>
-                  <textarea
-                    id="recommend-prompt"
-                    rows={3}
-                    value={state.recommendPrompt}
-                    onChange={(event) => dispatch({ type: 'SetRecommendPrompt', recommendPrompt: event.target.value })}
-                    placeholder="Example: Turn this into a watercolor style portrait with a soft forest background"
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    If an image is uploaded, AI will alter it using this prompt. If not, AI will create a custom image.
-                  </p>
-                </div>
-
                 <button
                   type="button"
                   onClick={handleRecommend}
-                  disabled={!state.recommendPrompt.trim() || state.loadingMessage !== null}
+                  disabled={state.loadingMessage !== null}
                   className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Generate AI Recommendation

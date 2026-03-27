@@ -18,6 +18,9 @@ const IMAGEN_ASPECT_RATIOS: Array<{ ratio: ImagenAspectRatio; value: number }> =
   { ratio: '16:9', value: 16 / 9 },
 ];
 
+const DEFAULT_IMAGE_PROMPT =
+  'Create a crochet-friendly image with strong contrast and simplified color blocks.';
+
 function normalizeAspectRatio(input: unknown): ImagenAspectRatio | undefined {
   if (typeof input === 'string') {
     if (IMAGEN_ASPECT_RATIOS.some((item) => item.ratio === input)) {
@@ -53,13 +56,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { prompt, aspectRatio, sourceImage } = body;
     const normalizedAspectRatio = normalizeAspectRatio(aspectRatio);
-
-    if (!prompt || typeof prompt !== 'string') {
-      return new Response(JSON.stringify({ error: 'prompt is required.' }), {
-        status: 400,
-        headers: { 'content-type': 'application/json' },
-      });
-    }
+    const promptText =
+      typeof prompt === 'string' && prompt.trim().length > 0 ? prompt.trim() : DEFAULT_IMAGE_PROMPT;
 
     const project = getGoogleVertexProject();
     if (!project) {
@@ -77,10 +75,10 @@ export async function POST(request: Request) {
 
     const imagePrompt = sourceImage
       ? {
-          text: prompt,
+          text: promptText,
           images: [sourceImage],
         }
-      : prompt;
+      : promptText;
 
     const result = await generateImage({
       model: vertex.image(IMAGEN_FAST_MODEL),
