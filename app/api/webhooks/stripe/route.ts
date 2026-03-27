@@ -8,9 +8,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function resolveAppUrl(request: Request): string {
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/$/, '');
+  const appUrlOverride = process.env.APP_URL;
+  if (appUrlOverride) {
+    return appUrlOverride.replace(/\/$/, '');
+  }
+
+  // Prefer the incoming request origin so emailed links match the active host.
+  const requestOrigin = new URL(request.url).origin;
+  if (requestOrigin) {
+    return requestOrigin;
   }
 
   const vercelUrl = process.env.VERCEL_URL;
@@ -18,7 +24,12 @@ function resolveAppUrl(request: Request): string {
     return `https://${vercelUrl}`;
   }
 
-  return new URL(request.url).origin;
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  return requestOrigin;
 }
 
 function getStripeClient(): Stripe | null {
