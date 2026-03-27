@@ -26,36 +26,36 @@ const schema = z.object({
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(request: Request): Promise<Response> {
-  const rateLimit = await checkRateLimit(request, 'pattern');
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(rateLimit.retryAfterSeconds);
-  }
-
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+    const rateLimit = await checkRateLimit(request, 'pattern');
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
 
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues }, { status: 400 });
-  }
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
-  const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds } = parsed.data;
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json({ error: parsed.error.issues }, { status: 400 });
+    }
 
-  // Strip optional data URI prefix and validate decoded size
-  const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
-  const decodedByteLength = Math.floor((base64Data.length * 3) / 4);
-  if (decodedByteLength > MAX_IMAGE_BYTES) {
-    return Response.json(
-      { error: 'Image exceeds maximum allowed size of 10 MB' },
-      { status: 413 },
-    );
-  }
+    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds } = parsed.data;
 
-  try {
+    // Strip optional data URI prefix and validate decoded size
+    const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
+    const decodedByteLength = Math.floor((base64Data.length * 3) / 4);
+    if (decodedByteLength > MAX_IMAGE_BYTES) {
+      return Response.json(
+        { error: 'Image exceeds maximum allowed size of 10 MB' },
+        { status: 413 },
+      );
+    }
+
     const rawPattern: QuantizeResult = await quantizeImage({
       imageBase64: base64Data,
       gridWidth,
