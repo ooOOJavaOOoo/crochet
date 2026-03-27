@@ -48,6 +48,7 @@ const YARN_BRANDS = [
   { value: 'lion-brand', label: 'Lion Brand' },
   { value: 'caron', label: 'Caron' },
   { value: 'i-love-this-yarn', label: 'I Love this Yarn' },
+  { value: 'yarn-bee', label: 'Yarn Bee (DK)' },
 ];
 
 const HERO_SWATCHES = [

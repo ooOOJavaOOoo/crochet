@@ -32,6 +32,7 @@ export const SKEIN_YARDAGES: Record<string, number> = {
   'caron': 315,
   'paintbox': 273,
   'i-love-this-yarn': 380,
+  'yarn-bee': 232,
 };
 
 // ---------------------------------------------------------------------------
@@ -90,6 +91,17 @@ function mkILoveThisYarn(name: string, hex: string): YarnColor {
     brandId: 'i-love-this-yarn',
     hex,
     skeinYardage: 380,
+  };
+}
+
+function mkYarnBee(name: string, hex: string): YarnColor {
+  return {
+    id: `yarn-bee-${name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
+    name,
+    brand: 'Yarn Bee Soft & Sleek DK',
+    brandId: 'yarn-bee',
+    hex,
+    skeinYardage: 232,
   };
 }
 
@@ -336,6 +348,26 @@ export const YARN_COLORS: YarnColor[] = [
   mkILoveThisYarn('Brown',           '#A52A2A'),
   mkILoveThisYarn('Chocolate',       '#D2691E'),
   mkILoveThisYarn('Maroon',          '#800000'),
+
+  // ── Yarn Bee Soft & Sleek DK ─────────────────────────────────────────────
+  mkYarnBee('White',                 '#FFFFFF'),
+  mkYarnBee('Black',                 '#111111'),
+  mkYarnBee('Cream',                 '#F5EBDD'),
+  mkYarnBee('Linen',                 '#D8C9B2'),
+  mkYarnBee('Taupe',                 '#9A8774'),
+  mkYarnBee('Silver',                '#B8BCC2'),
+  mkYarnBee('Charcoal',              '#4A4F57'),
+  mkYarnBee('Blush',                 '#E6B7BE'),
+  mkYarnBee('Coral',                 '#E97F75'),
+  mkYarnBee('Cherry',                '#BF2D3E'),
+  mkYarnBee('Mustard',               '#C89B2D'),
+  mkYarnBee('Sage',                  '#8FA487'),
+  mkYarnBee('Teal',                  '#2E8A88'),
+  mkYarnBee('Sky Blue',              '#8DBFE4'),
+  mkYarnBee('Denim',                 '#3F5E8F'),
+  mkYarnBee('Navy',                  '#21345E'),
+  mkYarnBee('Lilac',                 '#B6A4D8'),
+  mkYarnBee('Plum',                  '#6B4A79'),
 ];
 
 // ---------------------------------------------------------------------------
