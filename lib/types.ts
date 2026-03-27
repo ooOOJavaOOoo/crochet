@@ -54,6 +54,19 @@ export interface StoredDownloadToken {
   used: boolean;
 }
 
+export type ShoppingListCategory = 'yarn' | 'tool';
+
+export interface ShoppingListItem {
+  id: string;
+  category: ShoppingListCategory;
+  title: string;
+  quantity: number;
+  unit: string;
+  query: string;
+  amazonSearchUrl: string;
+  notes?: string;
+}
+
 export type ApiError = { error: string };
 
 export function generatePatternId(): string {

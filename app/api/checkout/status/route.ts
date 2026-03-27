@@ -1,7 +1,8 @@
 import { kv } from '@vercel/kv';
 import Stripe from 'stripe';
 import { SignJWT } from 'jose';
-import type { StoredCheckout, StoredDownloadToken } from '@/lib/types';
+import type { ShoppingListItem, StoredCheckout, StoredDownloadToken, StoredPattern } from '@/lib/types';
+import { buildAmazonShoppingList } from '@/lib/shopping';
 
 export const runtime = 'nodejs';
 
@@ -57,6 +58,15 @@ async function finalizeCheckout(
   return { status: 'complete', downloadToken: token };
 }
 
+async function getShoppingList(patternId: string): Promise<ShoppingListItem[] | null> {
+  const pattern = await kv.get<StoredPattern>(`pattern:${patternId}`);
+  if (!pattern) {
+    return null;
+  }
+
+  return buildAmazonShoppingList(pattern);
+}
+
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('session_id');
@@ -69,9 +79,12 @@ export async function GET(request: Request): Promise<Response> {
   const checkout = await kv.get<StoredCheckout>(checkoutKey);
 
   if (checkout?.status === 'complete') {
+    const shoppingList = await getShoppingList(checkout.patternId);
+
     return Response.json({
       status: 'complete',
       downloadToken: checkout.downloadToken,
+      shoppingList,
     });
   }
 
@@ -134,8 +147,11 @@ export async function GET(request: Request): Promise<Response> {
     jwtSecret,
   );
 
+  const shoppingList = await getShoppingList(patternId);
+
   return Response.json({
     status: finalized.status,
     downloadToken: finalized.downloadToken,
+    shoppingList,
   });
 }
