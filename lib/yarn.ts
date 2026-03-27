@@ -317,6 +317,10 @@ export function getYarnColorsByBrand(brandId: string): YarnColor[] {
   return YARN_COLORS.filter((color) => color.brandId === brandId);
 }
 
+export function getYarnColorById(colorId: string): YarnColor | undefined {
+  return YARN_COLORS.find((color) => color.id === colorId);
+}
+
 export function findNearestYarnColorFromIds(hex: string, colorIds: string[]): YarnColor | null {
   if (colorIds.length === 0) {
     return null;

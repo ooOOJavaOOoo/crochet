@@ -1,4 +1,5 @@
 import type { PatternData, ShoppingListItem } from './types';
+import { getYarnWeightConfig } from './yarnWeight';
 
 function createAmazonSearchUrl(query: string): string {
   return `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
@@ -8,11 +9,12 @@ function pluralize(unit: string, count: number): string {
   return count === 1 ? unit : `${unit}s`;
 }
 
-function buildYarnQuery(title: string): string {
-  return `${title} yarn skein medium weight`;
+function buildYarnQuery(title: string, yarnWeightLabel: string): string {
+  return `${title} yarn skein ${yarnWeightLabel}`;
 }
 
 export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[] {
+  const weightConfig = getYarnWeightConfig(pattern.yarnWeight);
   const yarnItems = pattern.inventory
     .filter((entry) => entry.skeinsNeeded > 0)
     .map((entry) => {
@@ -23,7 +25,7 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
           : `Yarn color ${entry.symbol}`;
 
       const quantity = Math.max(1, entry.skeinsNeeded);
-      const query = buildYarnQuery(yarnTitle);
+      const query = buildYarnQuery(yarnTitle, weightConfig.label);
 
       return {
         id: `yarn-${entry.paletteIndex}`,
@@ -41,13 +43,11 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
     {
       id: 'tool-hook',
       category: 'tool',
-      title: pattern.stitchType === 'c2c' ? '5.5mm crochet hook (I-9)' : '4.0mm crochet hook (G-6)',
+      title: `${pattern.hookSize} crochet hook`,
       quantity: 1,
       unit: 'hook',
-      query: pattern.stitchType === 'c2c' ? '5.5mm crochet hook ergonomic' : '4.0mm crochet hook ergonomic',
-      amazonSearchUrl: createAmazonSearchUrl(
-        pattern.stitchType === 'c2c' ? '5.5mm crochet hook ergonomic' : '4.0mm crochet hook ergonomic',
-      ),
+      query: `${pattern.hookSize} crochet hook ergonomic`,
+      amazonSearchUrl: createAmazonSearchUrl(`${pattern.hookSize} crochet hook ergonomic`),
     },
     {
       id: 'tool-needle',

@@ -1,7 +1,8 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useReducer } from 'react';
-import type { PatternData, StitchType } from '@/lib/types';
+import type { PatternData, StitchType, YarnWeight } from '@/lib/types';
+import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook } from '@/lib/yarnWeight';
 
 type Step = 'image' | 'settings' | 'generating' | 'preview' | 'buying';
 
@@ -58,6 +59,8 @@ interface State {
   gridHeight: number;
   colorCount: number;
   stitchType: StitchType;
+  yarnWeight: YarnWeight;
+  hookSize: string;
   brandId: string;
   availableYarnColors: YarnColorOption[];
   selectedYarnColorIds: string[];
@@ -77,6 +80,8 @@ type Action =
   | { type: 'SetGridHeight'; gridHeight: number }
   | { type: 'SetColorCount'; colorCount: number }
   | { type: 'SetStitchType'; stitchType: StitchType }
+  | { type: 'SetYarnWeight'; yarnWeight: YarnWeight }
+  | { type: 'SetHookSize'; hookSize: string }
   | { type: 'SetBrandId'; brandId: string }
   | { type: 'SetAvailableYarnColors'; colors: YarnColorOption[] }
   | { type: 'SetSelectedYarnColorIds'; colorIds: string[] }
@@ -98,6 +103,8 @@ const INITIAL_STATE: State = {
   gridHeight: initialPreset.height,
   colorCount: 6,
   stitchType: 'tapestry',
+  yarnWeight: DEFAULT_YARN_WEIGHT,
+  hookSize: getDefaultHook(DEFAULT_YARN_WEIGHT, 'tapestry'),
   brandId: '',
   availableYarnColors: [],
   selectedYarnColorIds: [],
@@ -130,7 +137,19 @@ function reducer(state: State, action: Action): State {
     case 'SetColorCount':
       return { ...state, colorCount: action.colorCount };
     case 'SetStitchType':
-      return { ...state, stitchType: action.stitchType };
+      return {
+        ...state,
+        stitchType: action.stitchType,
+        hookSize: getDefaultHook(state.yarnWeight, action.stitchType),
+      };
+    case 'SetYarnWeight':
+      return {
+        ...state,
+        yarnWeight: action.yarnWeight,
+        hookSize: getDefaultHook(action.yarnWeight, state.stitchType),
+      };
+    case 'SetHookSize':
+      return { ...state, hookSize: action.hookSize };
     case 'SetBrandId':
       return {
         ...state,
@@ -383,6 +402,8 @@ export default function HomePage() {
           gridHeight: state.gridHeight,
           colorCount: state.colorCount,
           stitchType: state.stitchType,
+          yarnWeight: state.yarnWeight,
+          hookSize: state.hookSize,
           brandId: state.brandId || undefined,
           selectedYarnColorIds:
             state.selectedYarnColorIds.length > 0 ? state.selectedYarnColorIds : undefined,
@@ -595,9 +616,51 @@ export default function HomePage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {state.stitchType === 'tapestry'
-                      ? 'Row-by-row, carrying yarn behind. Gauge: 4 sts / 5 rows per inch.'
-                      : 'Diagonal blocks from corner to corner. Gauge: ~1 block per inch.'}
+                      ? getYarnWeightConfig(state.yarnWeight).tapestryGaugeHint
+                      : getYarnWeightConfig(state.yarnWeight).c2cGaugeHint}
                   </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="yarn-weight" className="mb-1 block text-sm font-medium text-slate-700">
+                      Yarn weight
+                    </label>
+                    <select
+                      id="yarn-weight"
+                      value={state.yarnWeight}
+                      onChange={(event) =>
+                        dispatch({ type: 'SetYarnWeight', yarnWeight: event.target.value as YarnWeight })
+                      }
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                    >
+                      {YARN_WEIGHT_CONFIGS.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="hook-size" className="mb-1 block text-sm font-medium text-slate-700">
+                      Hook size
+                    </label>
+                    <select
+                      id="hook-size"
+                      value={state.hookSize}
+                      onChange={(event) =>
+                        dispatch({ type: 'SetHookSize', hookSize: event.target.value })
+                      }
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                    >
+                      {getYarnWeightConfig(state.yarnWeight).hookOptions.map((h) => (
+                        <option key={h.label} value={h.label}>
+                          {h.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>

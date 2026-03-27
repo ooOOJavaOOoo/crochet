@@ -2,6 +2,7 @@ import { PDFDocument, PDFPage, PDFFont, rgb, StandardFonts, PageSizes } from 'pd
 import { Resvg } from '@resvg/resvg-js';
 import type { PatternData, PaletteEntry } from './types';
 import { buildAmazonShoppingList } from './shopping';
+import { getYarnWeightConfig } from './yarnWeight';
 
 export interface PdfOptions {
   pattern: PatternData;
@@ -58,14 +59,29 @@ function formatYards(yards: number): string {
   });
 }
 
-function pickYarnSuggestion(entry: { yarnBrand?: string; yarnColorName?: string }, palette: PaletteEntry): string {
-  const brand = entry.yarnBrand ?? palette.yarnBrand;
-  const color = entry.yarnColorName ?? palette.yarnColorName ?? palette.name;
+function resolveLegendBrand(pattern: PatternData): string {
+  const brandCounts = new Map<string, number>();
 
-  if (brand && color) return `${brand} - ${color}`;
-  if (brand) return brand;
-  if (color) return color;
-  return 'Worsted weight';
+  const addBrand = (brand?: string): void => {
+    if (!brand) return;
+    brandCounts.set(brand, (brandCounts.get(brand) ?? 0) + 1);
+  };
+
+  for (const entry of pattern.inventory) {
+    addBrand(entry.yarnBrand);
+  }
+
+  if (brandCounts.size === 0) {
+    for (const paletteEntry of pattern.palette) {
+      addBrand(paletteEntry.yarnBrand);
+    }
+  }
+
+  if (brandCounts.size === 0) {
+    return 'Selected Brand';
+  }
+
+  return Array.from(brandCounts.entries()).sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function truncateToWidth(text: string, font: PDFFont, size: number, maxWidth: number): string {
@@ -150,8 +166,8 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
 
     page.drawText(
       pattern.stitchType === 'c2c'
-        ? 'C2C (Corner-to-Corner) Crochet Pattern — Worsted Weight'
-        : 'Tapestry Crochet Pattern — Worsted Weight',
+        ? `C2C (Corner-to-Corner) Crochet Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`
+        : `Tapestry Crochet Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`,
       {
         x: MARGIN,
         y,
@@ -170,8 +186,8 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
 
     page.drawText(
       pattern.stitchType === 'c2c'
-        ? 'Gauge: ~1 block per inch (worsted weight, 5.0mm hook, 3dc C2C block)'
-        : 'Gauge: 4 stitches / 5 rows per inch (worsted, 5.0mm hook)',
+        ? `Gauge: ${getYarnWeightConfig(pattern.yarnWeight).c2cGaugeHint.split('. ')[1] ?? ''} Hook: ${pattern.hookSize}`
+        : `Gauge: ${getYarnWeightConfig(pattern.yarnWeight).tapestryGaugeHint.split('. ')[1] ?? ''} Hook: ${pattern.hookSize}`,
       {
         x: MARGIN,
         y,
@@ -204,8 +220,9 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   {
     const page = newPage();
     let y = PAGE_HEIGHT - MARGIN;
+    const legendBrand = resolveLegendBrand(pattern);
 
-    page.drawText('Color Legend & Yarn Requirements', {
+    page.drawText(`Color Legend & Yarn Requirements for ${legendBrand}`, {
       x: MARGIN,
       y,
       size: 18,
@@ -218,21 +235,17 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     const cols = {
       symbol:     MARGIN,
       colorName:  MARGIN + 50,
-      suggestion: MARGIN + 170,
-      hex:        MARGIN + 310,
-      stitches:   MARGIN + 378,
-      yards:      MARGIN + 430,
-      skeins:     MARGIN + 472,
+      stitches:   MARGIN + 280,
+      yards:      MARGIN + 365,
+      skeins:     MARGIN + 455,
     };
 
     const colWidths = {
       symbol: 50,
-      colorName: 120,
-      suggestion: 140,
-      hex: 68,
-      stitches: 52,
-      yards: 42,
-      skeins: 43,
+      colorName: 190,
+      stitches: 85,
+      yards: 90,
+      skeins: 80,
     };
 
     // Header row background
@@ -247,8 +260,6 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     const headers: Array<[keyof typeof cols, string]> = [
       ['symbol',     'Symbol'],
       ['colorName',  'Color Name'],
-      ['suggestion', 'Yarn Brand & Color'],
-      ['hex',        'Hex'],
       ['stitches',   'Stitches'],
       ['yards',      'Yards'],
       ['skeins',     'Skeins'],
@@ -285,15 +296,6 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
       const colorName = truncateToWidth(pal.name ?? 'Unknown', helvetica, 9, colWidths.colorName - 2);
       page.drawText(colorName, { x: cols.colorName, y, size: 9, font: helvetica, color: black });
 
-      const suggestion = truncateToWidth(
-        pickYarnSuggestion(entry, pal),
-        helvetica,
-        9,
-        colWidths.suggestion - 2,
-      );
-      page.drawText(suggestion, { x: cols.suggestion, y, size: 9, font: helvetica, color: black });
-
-      page.drawText(pal.hex, { x: cols.hex, y, size: 9, font: helvetica, color: black });
       const stitchesText = entry.totalStitches.toLocaleString();
       page.drawText(stitchesText, {
         x: cols.stitches + colWidths.stitches - helvetica.widthOfTextAtSize(stitchesText, 9),

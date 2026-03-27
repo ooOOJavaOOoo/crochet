@@ -18,10 +18,12 @@ const schema = z.object({
   imageBase64: z.string().min(1),
   gridWidth: z.number().int().min(20).max(432),
   gridHeight: z.number().int().min(20).max(432),
-  colorCount: z.number().int().min(2).max(12),
+  colorCount: z.number().int().min(0).max(30), // 0 = auto-detect
   brandId: z.string().optional(),
   selectedYarnColorIds: z.array(z.string().min(1)).optional(),
   stitchType: z.enum(['tapestry', 'c2c']).optional().default('tapestry'),
+  yarnWeight: z.enum(['fingering', 'sport', 'dk', 'worsted', 'bulky', 'super-bulky']).optional().default('worsted'),
+  hookSize: z.string().max(30).optional(),
 });
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -45,7 +47,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType } = parsed.data;
+    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType, yarnWeight, hookSize } = parsed.data;
 
     // Strip optional data URI prefix and validate decoded size
     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -65,6 +67,8 @@ export async function POST(request: Request): Promise<Response> {
       brandId,
       selectedYarnColorIds,
       stitchType,
+      yarnWeight,
+      hookSize,
     });
 
     const patternId = generatePatternId();

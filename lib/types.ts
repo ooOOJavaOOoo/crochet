@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 
 export type StitchType = 'tapestry' | 'c2c';
 
+export type YarnWeight = 'fingering' | 'sport' | 'dk' | 'worsted' | 'bulky' | 'super-bulky';
+
 export interface PaletteEntry {
   index: number;
   hex: string;
@@ -32,6 +34,8 @@ export interface PatternData {
   aspectRatio: number;
   title: string;
   stitchType: StitchType;
+  yarnWeight: YarnWeight;
+  hookSize: string;
   createdAt: string;
 }
 
