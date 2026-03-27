@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 
+export type StitchType = 'tapestry' | 'c2c';
+
 export interface PaletteEntry {
   index: number;
   hex: string;
@@ -29,6 +31,7 @@ export interface PatternData {
   inventory: YarnInventoryEntry[];
   aspectRatio: number;
   title: string;
+  stitchType: StitchType;
   createdAt: string;
 }
 

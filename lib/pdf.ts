@@ -107,13 +107,18 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     });
     y -= 40;
 
-    page.drawText('Tapestry Crochet Pattern — Worsted Weight', {
-      x: MARGIN,
-      y,
-      size: 14,
-      font: helvetica,
-      color: gray,
-    });
+    page.drawText(
+      pattern.stitchType === 'c2c'
+        ? 'C2C (Corner-to-Corner) Crochet Pattern — Worsted Weight'
+        : 'Tapestry Crochet Pattern — Worsted Weight',
+      {
+        x: MARGIN,
+        y,
+        size: 14,
+        font: helvetica,
+        color: gray,
+      },
+    );
     y -= 36;
 
     page.drawText(
@@ -122,13 +127,18 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     );
     y -= 22;
 
-    page.drawText('Gauge: 4 stitches / 5 rows per inch (worsted, 5.0mm hook)', {
-      x: MARGIN,
-      y,
-      size: 12,
-      font: helvetica,
-      color: black,
-    });
+    page.drawText(
+      pattern.stitchType === 'c2c'
+        ? 'Gauge: ~1 block per inch (worsted weight, 5.0mm hook, 3dc C2C block)'
+        : 'Gauge: 4 stitches / 5 rows per inch (worsted, 5.0mm hook)',
+      {
+        x: MARGIN,
+        y,
+        size: 12,
+        font: helvetica,
+        color: black,
+      },
+    );
     y -= 22;
 
     const genDate = new Date(pattern.createdAt).toLocaleDateString('en-US', {
@@ -266,26 +276,46 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   }
 
   // ---------------------------------------------------------------------------
-  // PAGE 3+ — Row-by-Row Instructions (bottom-to-top, max 50 rows per page)
+  // PAGE 3+ — Row-by-Row / Diagonal Instructions
   // ---------------------------------------------------------------------------
   {
     const ROWS_PER_PAGE = 50;
     const LINE_HEIGHT = 13;
     const totalRows = pattern.stitchGrid.length;
+    const isC2C = pattern.stitchType === 'c2c';
 
     for (let pageStart = 0; pageStart < totalRows; pageStart += ROWS_PER_PAGE) {
       const page = newPage();
       let y = PAGE_HEIGHT - MARGIN;
 
       if (pageStart === 0) {
-        page.drawText('Row-by-Row Instructions (Bottom to Top)', {
-          x: MARGIN,
-          y,
-          size: 18,
-          font: helveticaBold,
-          color: black,
-        });
-        y -= 32;
+        page.drawText(
+          isC2C ? 'C2C Diagonal Instructions (Bottom-Left to Top-Right)' : 'Row-by-Row Instructions (Bottom to Top)',
+          {
+            x: MARGIN,
+            y,
+            size: 18,
+            font: helveticaBold,
+            color: black,
+          },
+        );
+        y -= 24;
+
+        if (isC2C) {
+          const noteLines = wrapText(
+            'Work following the standard C2C method. Each entry below represents one diagonal row of blocks. ' +
+            'Start at the bottom-left corner and progress diagonally. Each block = ch 3, join with sl st, ch 3, 3 dc in the ch-3 space. ' +
+            'Refer to the stitch chart on the final page to follow the diagonal colour sequence.',
+            helvetica,
+            9,
+            CONTENT_WIDTH,
+          );
+          for (const noteLine of noteLines) {
+            page.drawText(noteLine, { x: MARGIN, y, size: 9, font: helvetica, color: gray });
+            y -= LINE_HEIGHT;
+          }
+          y -= 8;
+        }
       }
 
       const pageEnd = Math.min(pageStart + ROWS_PER_PAGE, totalRows);
@@ -293,7 +323,8 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
       for (let rowIdx = pageStart; rowIdx < pageEnd; rowIdx++) {
         const row = pattern.stitchGrid[rowIdx];
         const rleStr = rleRow(row, pattern.palette);
-        const lineText = `Row ${rowIdx + 1}: ${rleStr}`;
+        const rowLabel = isC2C ? `Diagonal ${rowIdx + 1}` : `Row ${rowIdx + 1}`;
+        const lineText = `${rowLabel}: ${rleStr}`;
 
         const wrappedLines = wrapText(lineText, helvetica, 9, CONTENT_WIDTH);
         for (const wLine of wrappedLines) {

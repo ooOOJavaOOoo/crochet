@@ -21,6 +21,7 @@ const schema = z.object({
   colorCount: z.number().int().min(2).max(12),
   brandId: z.string().optional(),
   selectedYarnColorIds: z.array(z.string().min(1)).optional(),
+  stitchType: z.enum(['tapestry', 'c2c']).optional().default('tapestry'),
 });
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -44,7 +45,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds } = parsed.data;
+    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType } = parsed.data;
 
     // Strip optional data URI prefix and validate decoded size
     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -63,6 +64,7 @@ export async function POST(request: Request): Promise<Response> {
       colorCount,
       brandId,
       selectedYarnColorIds,
+      stitchType,
     });
 
     const patternId = generatePatternId();

@@ -7,6 +7,9 @@ import type { PaletteEntry } from './types';
 const CELL_SIZE     = 8;   // pixels per stitch cell
 const LEGEND_HEIGHT = 60;  // pixels reserved below the chart
 const ENTRY_W       = 80;  // pixels per legend entry (swatch + symbol + hex)
+const LABEL_BAND_X  = 28;  // horizontal space for row numbers
+const LABEL_BAND_Y  = 18;  // vertical space for column numbers
+const LABEL_BAND_R  = 12;  // right-side gutter for the last column label
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -33,17 +36,18 @@ function esc(s: string): string {
 
 function renderLegend(
   palette: PaletteEntry[],
-  svgWidth: number,
+  chartWidth: number,
+  offsetX: number,
   offsetY: number,
 ): string {
-  const entriesPerRow = Math.max(1, Math.floor(svgWidth / ENTRY_W));
+  const entriesPerRow = Math.max(1, Math.floor(chartWidth / ENTRY_W));
   const rowHeight     = 26; // px per legend row
   const parts: string[] = [];
 
   palette.forEach((entry, i) => {
     const col  = i % entriesPerRow;
     const row  = Math.floor(i / entriesPerRow);
-    const ex   = col * ENTRY_W;
+    const ex   = offsetX + col * ENTRY_W;
     const ey   = offsetY + 6 + row * rowHeight;
     const hexSafe = esc(entry.hex);
     const symSafe = esc(entry.symbol);
@@ -56,6 +60,24 @@ function renderLegend(
   });
 
   return parts.join('\n');
+}
+
+function niceTickStep(minimum: number): number {
+  if (minimum <= 1) return 1;
+
+  const exponent = Math.floor(Math.log10(minimum));
+  const base = 10 ** exponent;
+  const normalized = minimum / base;
+
+  if (normalized <= 1) return base;
+  if (normalized <= 2) return 2 * base;
+  if (normalized <= 5) return 5 * base;
+  return 10 * base;
+}
+
+function shouldRenderTickLabel(index: number, total: number, step: number): boolean {
+  if (index === 0 || index === total - 1) return true;
+  return (index + 1) % step === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,23 +94,59 @@ export function renderStitchChart(opts: SvgChartOptions): string {
   const totalRows  = stitchGrid.length;
   const cols       = stitchGrid[0].length;
   const renderRows = preview ? Math.min(20, totalRows) : totalRows;
+  const showAxisLabels = !preview;
 
+  const chartX = showAxisLabels ? LABEL_BAND_X : 0;
+  const chartY = showAxisLabels ? LABEL_BAND_Y : 0;
+  const chartRightPad = showAxisLabels ? LABEL_BAND_R : 0;
   const chartHeight = renderRows * CELL_SIZE;
-  const svgWidth    = cols * CELL_SIZE;
-  const svgHeight   = chartHeight + LEGEND_HEIGHT;
+  const chartWidth  = cols * CELL_SIZE;
+  const legendY     = chartY + chartHeight + (showAxisLabels ? LABEL_BAND_Y : 0);
+  const svgWidth    = chartX + chartWidth + chartRightPad;
+  const svgHeight   = legendY + LEGEND_HEIGHT;
 
   const parts: string[] = [];
+
+  if (showAxisLabels) {
+    const colTickStep = niceTickStep(Math.max(Math.ceil(cols / 20), 1));
+    const rowTickStep = niceTickStep(Math.max(Math.ceil(renderRows / 20), 1));
+
+    parts.push(
+      `<rect x="${chartX}" y="${chartY}" width="${chartWidth}" height="${chartHeight}" fill="#ffffff" stroke="#d9d9d9" stroke-width="1"/>`,
+    );
+
+    for (let col = 0; col < cols; col++) {
+      if (!shouldRenderTickLabel(col, cols, colTickStep)) continue;
+      const label = String(col + 1);
+      const x = chartX + col * CELL_SIZE + CELL_SIZE / 2;
+
+      parts.push(
+        `<text x="${x}" y="${chartY - 5}" font-family="monospace" font-size="8" fill="#666" text-anchor="middle">${label}</text>`,
+        `<text x="${x}" y="${chartY + chartHeight + 12}" font-family="monospace" font-size="8" fill="#666" text-anchor="middle">${label}</text>`,
+      );
+    }
+
+    for (let row = 0; row < renderRows; row++) {
+      if (!shouldRenderTickLabel(row, renderRows, rowTickStep)) continue;
+      const label = String(row + 1);
+      const y = chartY + (renderRows - 1 - row) * CELL_SIZE + CELL_SIZE / 2 + 3;
+
+      parts.push(
+        `<text x="${chartX - 4}" y="${y}" font-family="monospace" font-size="8" fill="#666" text-anchor="end">${label}</text>`,
+      );
+    }
+  }
 
   // ── Stitch cells ──────────────────────────────────────────────────────────
   // row 0 = bottom of blanket → rendered at the BOTTOM of the SVG (high y)
   // SVG y=0 is the top, so row i → y = (renderRows - 1 - i) * CELL_SIZE
   for (let row = 0; row < renderRows; row++) {
-    const y = (renderRows - 1 - row) * CELL_SIZE;
+    const y = chartY + (renderRows - 1 - row) * CELL_SIZE;
     for (let col = 0; col < cols; col++) {
       const pIdx = stitchGrid[row][col] ?? 0;
       const hex  = palette[pIdx]?.hex ?? '#CCCCCC';
       parts.push(
-        `<rect x="${col * CELL_SIZE}" y="${y}" width="${CELL_SIZE}" height="${CELL_SIZE}" fill="${esc(hex)}"/>`,
+        `<rect x="${chartX + col * CELL_SIZE}" y="${y}" width="${CELL_SIZE}" height="${CELL_SIZE}" fill="${esc(hex)}"/>`,
       );
     }
   }
@@ -96,8 +154,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
   // ── Footer: teaser bar (preview) or color legend (full) ──────────────────
   if (preview) {
     parts.push(
-      `<rect x="0" y="${chartHeight}" width="${svgWidth}" height="${LEGEND_HEIGHT}" fill="#f5f5f5"/>`,
-      `<text x="${svgWidth / 2}" y="${chartHeight + LEGEND_HEIGHT / 2 + 6}" ` +
+      `<rect x="0" y="${legendY}" width="${svgWidth}" height="${LEGEND_HEIGHT}" fill="#f5f5f5"/>`,
+      `<text x="${svgWidth / 2}" y="${legendY + LEGEND_HEIGHT / 2 + 6}" ` +
         `font-family="sans-serif" font-size="13" font-weight="bold" fill="#888" ` +
         `text-anchor="middle">` +
         `Pattern preview (${Math.min(renderRows, totalRows)} of ${totalRows} rows shown)` +
@@ -105,7 +163,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
     );
   } else {
     const legendPalette = legendLimit === undefined ? palette : palette.slice(0, legendLimit);
-    parts.push(renderLegend(legendPalette, svgWidth, chartHeight));
+    parts.push(renderLegend(legendPalette, chartWidth, chartX, legendY));
   }
 
   return [

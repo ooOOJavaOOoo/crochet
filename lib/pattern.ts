@@ -1,5 +1,5 @@
 import Jimp from 'jimp';
-import type { PaletteEntry, YarnInventoryEntry } from './types';
+import type { PaletteEntry, StitchType, YarnInventoryEntry } from './types';
 import {
   findNearestYarnColor,
   findNearestYarnColorFromIds,
@@ -22,20 +22,22 @@ const quantize = require('quantize') as (
 // Constants
 // ---------------------------------------------------------------------------
 
-const YARDS_PER_STITCH = 0.6;
-const BUFFER_PERCENT   = 0.15;
+const TAPESTRY_YARDS_PER_STITCH = 0.6;
+const C2C_YARDS_PER_BLOCK       = 1.0;
+const BUFFER_PERCENT            = 0.15;
 
 // ---------------------------------------------------------------------------
 // Public interfaces
 // ---------------------------------------------------------------------------
 
 export interface QuantizeOptions {
-  imageBase64: string;  // data URI or raw base64
-  gridWidth: number;    // target stitch columns
-  gridHeight: number;   // target stitch rows
-  colorCount: number;   // 2–12
-  brandId?: string;     // for yarn color snapping
+  imageBase64: string;          // data URI or raw base64
+  gridWidth: number;            // target stitch columns
+  gridHeight: number;           // target stitch rows
+  colorCount: number;           // 2–12
+  brandId?: string;             // for yarn color snapping
   selectedYarnColorIds?: string[];
+  stitchType?: StitchType;      // 'tapestry' (default) | 'c2c'
 }
 
 export interface QuantizeResult {
@@ -44,6 +46,7 @@ export interface QuantizeResult {
   dimensions: { width: number; height: number };
   inventory: YarnInventoryEntry[];
   aspectRatio: number;
+  stitchType: StitchType;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +79,7 @@ function euclidean(a: RgbPixel, b: RgbPixel): number {
 // ---------------------------------------------------------------------------
 
 export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResult> {
-  const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds } = opts;
+  const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType = 'tapestry' } = opts;
 
   // ── Step 1: Decode base64 → Buffer ────────────────────────────────────────
   const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -172,8 +175,9 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
 
   // ── Step 9: Compute yarn inventory ───────────────────────────────────────
   const skeinYardage = getSkeinYardage(brandId);
+  const yardsPerUnit = stitchType === 'c2c' ? C2C_YARDS_PER_BLOCK : TAPESTRY_YARDS_PER_STITCH;
   const inventory: YarnInventoryEntry[] = palette.map((p) => {
-    const yardsNeeded  = p.pixelCount * YARDS_PER_STITCH * (1 + BUFFER_PERCENT);
+    const yardsNeeded  = p.pixelCount * yardsPerUnit * (1 + BUFFER_PERCENT);
     const skeinsNeeded = Math.ceil(yardsNeeded / skeinYardage);
     return {
       paletteIndex:  p.index,
@@ -193,5 +197,6 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
     dimensions: { width: gridWidth, height: gridHeight },
     inventory,
     aspectRatio: gridWidth / gridHeight,
+    stitchType,
   };
 }

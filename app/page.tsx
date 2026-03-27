@@ -1,9 +1,8 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useReducer } from 'react';
-import type { PatternData } from '@/lib/types';
+import type { PatternData, StitchType } from '@/lib/types';
 
-type ImageMode = 'upload' | 'ai';
 type Step = 'image' | 'settings' | 'generating' | 'preview' | 'buying';
 
 interface PreviewData {
@@ -51,15 +50,14 @@ const YARN_BRANDS = [
 ];
 
 interface State {
-  imageMode: ImageMode;
   step: Step;
   imageBase64: string | null;
-  aiPrompt: string;
   recommendPrompt: string;
   presetIndex: number;
   gridWidth: number;
   gridHeight: number;
   colorCount: number;
+  stitchType: StitchType;
   brandId: string;
   availableYarnColors: YarnColorOption[];
   selectedYarnColorIds: string[];
@@ -71,15 +69,14 @@ interface State {
 }
 
 type Action =
-  | { type: 'SetImageMode'; imageMode: ImageMode }
   | { type: 'SetStep'; step: Step }
   | { type: 'SetImageBase64'; imageBase64: string | null }
-  | { type: 'SetAiPrompt'; aiPrompt: string }
   | { type: 'SetRecommendPrompt'; recommendPrompt: string }
   | { type: 'SetPreset'; presetIndex: number; width: number; height: number }
   | { type: 'SetGridWidth'; gridWidth: number }
   | { type: 'SetGridHeight'; gridHeight: number }
   | { type: 'SetColorCount'; colorCount: number }
+  | { type: 'SetStitchType'; stitchType: StitchType }
   | { type: 'SetBrandId'; brandId: string }
   | { type: 'SetAvailableYarnColors'; colors: YarnColorOption[] }
   | { type: 'SetSelectedYarnColorIds'; colorIds: string[] }
@@ -93,15 +90,14 @@ type Action =
 const initialPreset = BLANKET_PRESETS[1];
 
 const INITIAL_STATE: State = {
-  imageMode: 'upload',
   step: 'image',
   imageBase64: null,
-  aiPrompt: '',
   recommendPrompt: '',
   presetIndex: 1,
   gridWidth: initialPreset.width,
   gridHeight: initialPreset.height,
   colorCount: 6,
+  stitchType: 'tapestry',
   brandId: '',
   availableYarnColors: [],
   selectedYarnColorIds: [],
@@ -114,14 +110,10 @@ const INITIAL_STATE: State = {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'SetImageMode':
-      return { ...state, imageMode: action.imageMode };
     case 'SetStep':
       return { ...state, step: action.step };
     case 'SetImageBase64':
       return { ...state, imageBase64: action.imageBase64, previewData: null, patternData: null };
-    case 'SetAiPrompt':
-      return { ...state, aiPrompt: action.aiPrompt };
     case 'SetRecommendPrompt':
       return { ...state, recommendPrompt: action.recommendPrompt };
     case 'SetPreset':
@@ -137,6 +129,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, gridHeight: action.gridHeight };
     case 'SetColorCount':
       return { ...state, colorCount: action.colorCount };
+    case 'SetStitchType':
+      return { ...state, stitchType: action.stitchType };
     case 'SetBrandId':
       return {
         ...state,
@@ -314,35 +308,6 @@ export default function HomePage() {
     }
   };
 
-  const handleGenerateImage = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!state.aiPrompt.trim()) {
-      dispatch({ type: 'SetError', error: 'Describe what you want to generate first.' });
-      return;
-    }
-
-    try {
-      dispatch({ type: 'SetError', error: null });
-      dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Generating image with AI...' });
-
-      const res = await fetch('/api/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: state.aiPrompt.trim() }),
-      });
-
-      const data = await getJsonOrThrow<{ image?: string; imageBase64?: string }>(res);
-      dispatch({ type: 'SetImageBase64', imageBase64: getGeneratedImageFromPayload(data) });
-      dispatch({ type: 'SetStep', step: 'settings' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Image generation failed.';
-      dispatch({ type: 'SetError', error: message });
-    } finally {
-      dispatch({ type: 'SetLoadingMessage', loadingMessage: null });
-    }
-  };
-
   const handlePresetChange = (presetIndex: number) => {
     const preset = BLANKET_PRESETS[presetIndex] ?? BLANKET_PRESETS[BLANKET_PRESETS.length - 1];
     dispatch({
@@ -417,6 +382,7 @@ export default function HomePage() {
           gridWidth: state.gridWidth,
           gridHeight: state.gridHeight,
           colorCount: state.colorCount,
+          stitchType: state.stitchType,
           brandId: state.brandId || undefined,
           selectedYarnColorIds:
             state.selectedYarnColorIds.length > 0 ? state.selectedYarnColorIds : undefined,
@@ -479,7 +445,7 @@ export default function HomePage() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Tapestry Crochet Pattern Generator</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Crochet Pattern Generator</h1>
             <p className="mt-1 text-sm text-slate-600">
               Upload or generate an image, tune your settings, then preview and purchase the full PDF.
             </p>
@@ -514,62 +480,21 @@ export default function HomePage() {
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold">1. Choose Your Image</h2>
 
-              <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'SetImageMode', imageMode: 'upload' })}
-                  className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                    state.imageMode === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Upload Photo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'SetImageMode', imageMode: 'ai' })}
-                  className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                    state.imageMode === 'ai' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Generate with AI
-                </button>
+              <div className="space-y-3">
+                <label htmlFor="photo" className="block text-sm font-medium text-slate-700">
+                  Upload photo (JPEG, PNG, WebP up to 10MB)
+                </label>
+                <input
+                  id="photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileUpload}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
+                />
+                <p className="text-xs text-slate-500">
+                  Skip upload if you want AI to create an image from text in the recommendation box below.
+                </p>
               </div>
-
-              {state.imageMode === 'upload' ? (
-                <div className="space-y-3">
-                  <label htmlFor="photo" className="block text-sm font-medium text-slate-700">
-                    Upload photo (JPEG, PNG, WebP up to 10MB)
-                  </label>
-                  <input
-                    id="photo"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleFileUpload}
-                    className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
-                  />
-                </div>
-              ) : (
-                <form onSubmit={handleGenerateImage} className="space-y-3">
-                  <label htmlFor="prompt" className="block text-sm font-medium text-slate-700">
-                    Describe your image
-                  </label>
-                  <textarea
-                    id="prompt"
-                    rows={4}
-                    value={state.aiPrompt}
-                    onChange={(event) => dispatch({ type: 'SetAiPrompt', aiPrompt: event.target.value })}
-                    placeholder="Example: Golden retriever in a flower field at sunset"
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!state.aiPrompt.trim() || state.loadingMessage !== null}
-                    className="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Generate Image
-                  </button>
-                </form>
-              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -644,6 +569,35 @@ export default function HomePage() {
                     onChange={(event) => dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })}
                     className="w-full"
                   />
+                </div>
+
+                <div>
+                  <p className="mb-1 block text-sm font-medium text-slate-700">Stitch type</p>
+                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'SetStitchType', stitchType: 'tapestry' })}
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                        state.stitchType === 'tapestry' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Tapestry
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'SetStitchType', stitchType: 'c2c' })}
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                        state.stitchType === 'c2c' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      C2C (Corner-to-Corner)
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {state.stitchType === 'tapestry'
+                      ? 'Row-by-row, carrying yarn behind. Gauge: 4 sts / 5 rows per inch.'
+                      : 'Diagonal blocks from corner to corner. Gauge: ~1 block per inch.'}
+                  </p>
                 </div>
 
                 <div>
