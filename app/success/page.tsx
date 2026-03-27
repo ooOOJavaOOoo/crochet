@@ -57,7 +57,19 @@ function SuccessContent() {
         );
 
         if (!res.ok) {
-          // Transient error — keep polling
+          if (res.status === 404) {
+            setStatus('error');
+            setErrorMessage('Checkout session was not found. Please try the payment flow again.');
+            return;
+          }
+
+          if (res.status >= 500) {
+            setStatus('error');
+            setErrorMessage('Server error while confirming payment. Please refresh in a moment.');
+            return;
+          }
+
+          // Treat other non-OK responses as transient.
           if (!cancelled) {
             pollTimer = setTimeout(poll, 2000);
           }
