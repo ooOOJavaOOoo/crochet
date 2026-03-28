@@ -1,8 +1,39 @@
 import type { PatternData, ShoppingListItem } from './types';
 import { getYarnWeightConfig } from './yarnWeight';
 
+const AMAZON_SEARCH_URL = 'https://www.amazon.com/s';
+const AMAZON_DEFAULT_QUERY = 'crochet supplies';
+const AMAZON_FALLBACK_ASSOCIATE_TAG = 'changeme-20';
+
+function getAmazonAssociateTag(): string {
+  const envTag =
+    process.env.AMAZON_ASSOCIATE_TAG ??
+    process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG ??
+    process.env.AMAZON_AFFILIATE_TAG;
+
+  const tag = envTag?.trim();
+  return tag && tag.length > 0 ? tag : AMAZON_FALLBACK_ASSOCIATE_TAG;
+}
+
+function sanitizeAmazonQuery(query: string): string {
+  return query
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180);
+}
+
 function createAmazonSearchUrl(query: string): string {
-  return `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
+  const sanitizedQuery = sanitizeAmazonQuery(query) || AMAZON_DEFAULT_QUERY;
+  const url = new URL(AMAZON_SEARCH_URL);
+
+  url.searchParams.set('k', sanitizedQuery);
+  url.searchParams.set('tag', getAmazonAssociateTag());
+  url.searchParams.set('linkCode', 'll2');
+  url.searchParams.set('language', 'en_US');
+  url.searchParams.set('ref', 'as_li_ss_tl');
+
+  return url.toString();
 }
 
 function pluralize(unit: string, count: number): string {

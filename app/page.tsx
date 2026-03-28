@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { ChangeEvent, useEffect, useReducer } from 'react';
 import type { PatternData, StitchType, YarnWeight } from '@/lib/types';
 import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook } from '@/lib/yarnWeight';
@@ -493,20 +494,28 @@ export default function HomePage() {
 
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div className="relative z-10">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <span className="hero-badge text-xs font-semibold uppercase tracking-[0.22em]">Crochet Studio</span>
+              <div className="mb-5 flex flex-wrap items-center gap-4">
+                <Image
+                  src="/crochet-canvas-logo.svg"
+                  alt="Crochet Canvas"
+                  width={270}
+                  height={80}
+                  className="h-12 w-auto sm:h-14"
+                  priority
+                />
+                <span className="hero-badge text-xs font-semibold uppercase tracking-[0.22em]">Pattern Studio</span>
                 <span className="rounded-full border border-[color:var(--border-soft)] bg-white/65 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
-                  Heirloom Hearth
+                  Artisan Theme
                 </span>
               </div>
 
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div className="max-w-3xl">
                   <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl lg:text-6xl">
-                    From yarn idea to shop-ready pattern, beautifully fast.
+                    Crochet Canvas turns any image into a chart you can stitch.
                   </h1>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-[color:var(--text-secondary)] sm:text-lg">
-                    Upload an image, shape your stitch and yarn settings, and generate polished chart previews made for creators and maker shops.
+                    Upload artwork, tune your yarn settings, and generate polished tapestry previews ready for your next project or shop listing.
                   </p>
                 </div>
 

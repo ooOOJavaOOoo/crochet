@@ -19,9 +19,9 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Crochet Pattern Generator — Convert Any Image to Tapestry Crochet',
+  title: 'Crochet Canvas — Pattern Studio for Tapestry Crochet',
   description:
-    'Upload a photo or generate an image, then get a complete tapestry crochet pattern with stitch chart, yarn requirements, and row-by-row instructions.',
+    'Crochet Canvas helps you turn any image into a polished tapestry crochet pattern with chart previews, yarn planning, and instant PDF delivery.',
 };
 
 export default function RootLayout({

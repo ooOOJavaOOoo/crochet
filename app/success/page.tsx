@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -20,7 +21,7 @@ interface CheckoutStatusPayload {
 function Spinner() {
   return (
     <span
-      className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"
+      className="h-12 w-12 animate-spin rounded-full border-4 border-[color:var(--border-soft)] border-t-[color:var(--brand-primary)]"
       aria-hidden="true"
     />
   );
@@ -134,7 +135,7 @@ function SuccessContent() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'crochet-pattern.pdf';
+      a.download = 'crochet-canvas-pattern.pdf';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -149,16 +150,22 @@ function SuccessContent() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold text-purple-700">Tapestry Crochet</h1>
+    <div className="crochet-page min-h-screen text-[color:var(--foreground)]">
+      <header className="border-b border-[color:var(--border-soft)] bg-white/70 px-4 py-4 backdrop-blur-sm">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-center sm:justify-start">
+          <Image
+            src="/crochet-canvas-logo.svg"
+            alt="Crochet Canvas"
+            width={270}
+            height={80}
+            className="h-12 w-auto"
+            priority
+          />
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="bg-white rounded-xl shadow-sm p-10 max-w-md w-full text-center">
+      <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-14">
+        <div className="crochet-card w-full max-w-lg rounded-[1.75rem] p-8 text-center sm:p-10">
 
           {/* Polling state */}
           {status === 'polling' && (
@@ -166,8 +173,8 @@ function SuccessContent() {
               <div className="flex justify-center mb-6">
                 <Spinner />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Processing payment…</h2>
-              <p className="text-gray-500 text-sm">
+              <h2 className="mb-2 font-display text-3xl font-semibold text-[color:var(--foreground)]">Processing payment...</h2>
+              <p className="text-sm text-[color:var(--text-secondary)]">
                 Please wait while we confirm your purchase. This usually takes a few seconds.
               </p>
             </>
@@ -177,39 +184,39 @@ function SuccessContent() {
           {status === 'complete' && downloadToken && (
             <>
               <div className="text-5xl mb-4" aria-hidden="true">🎉</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Your pattern is ready!</h2>
-              <p className="text-gray-500 text-sm mb-8">
+              <h2 className="mb-2 font-display text-3xl font-semibold text-[color:var(--foreground)]">Your pattern is ready!</h2>
+              <p className="mb-8 text-sm text-[color:var(--text-secondary)]">
                 Thank you for your purchase. Download your full PDF below.
               </p>
               <button
                 onClick={handleDownload}
                 disabled={isDownloading}
-                className="inline-flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-4 px-6 rounded-xl font-bold text-lg transition-colors"
+                className="success-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isDownloading ? 'Downloading…' : '⬇ Download Full PDF'}
               </button>
               {downloadError && (
-                <p className="text-sm text-red-600 mt-3">{downloadError}</p>
+                <p className="mt-3 text-sm text-[#9f3a2a]">{downloadError}</p>
               )}
-              <p className="text-xs text-gray-400 mt-4">
+              <p className="mt-4 text-xs text-[color:var(--text-secondary)]">
                 Your download link is valid for 24 hours.
               </p>
 
               {shoppingList.length > 0 && (
-                <div className="mt-8 rounded-lg border border-gray-200 p-4 text-left">
-                  <h3 className="text-sm font-semibold text-gray-900">Amazon Shopping List</h3>
-                  <p className="mt-1 text-xs text-gray-500">
+                <div className="mt-8 rounded-2xl border border-[color:var(--border-soft)] bg-white/70 p-4 text-left">
+                  <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Amazon Shopping List</h3>
+                  <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
                     Auto-built from your pattern materials so you can order everything quickly.
                   </p>
                   <ul className="mt-3 space-y-2">
                     {shoppingList.map((item) => (
                       <li
                         key={item.id}
-                        className="flex items-start justify-between gap-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2"
+                        className="flex items-start justify-between gap-3 rounded-xl border border-[color:var(--border-soft)]/60 bg-[color:var(--surface-subtle)]/55 px-3 py-2"
                       >
                         <div>
-                          <p className="text-sm font-medium text-gray-800">{item.title}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm font-medium text-[color:var(--foreground)]">{item.title}</p>
+                          <p className="text-xs text-[color:var(--text-secondary)]">
                             Qty: {item.quantity} {item.unit}
                             {item.notes ? ` • ${item.notes}` : ''}
                           </p>
@@ -218,7 +225,7 @@ function SuccessContent() {
                           href={item.amazonSearchUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="shrink-0 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-400"
+                          className="shrink-0 rounded-md border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] hover:bg-[color:var(--surface-subtle)]"
                         >
                           View on Amazon
                         </a>
@@ -234,14 +241,14 @@ function SuccessContent() {
           {status === 'timeout' && (
             <>
               <div className="text-4xl mb-4" aria-hidden="true">⏳</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Payment is still processing</h2>
-              <p className="text-gray-500 text-sm mb-6">
-                This is taking longer than expected. Your purchase is being processed — check back
+              <h2 className="mb-2 font-display text-2xl font-semibold text-[color:var(--foreground)]">Payment is still processing</h2>
+              <p className="mb-6 text-sm text-[color:var(--text-secondary)]">
+                This is taking longer than expected. Your purchase is being processed. Check back
                 shortly or refresh this page.
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-semibold text-sm transition-colors mb-3"
+                className="primary-button mb-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white"
               >
                 Refresh
               </button>
@@ -252,20 +259,20 @@ function SuccessContent() {
           {status === 'error' && (
             <>
               <div className="text-4xl mb-4" aria-hidden="true">⚠️</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-              <p className="text-gray-500 text-sm mb-6">
+              <h2 className="mb-2 font-display text-2xl font-semibold text-[color:var(--foreground)]">Something went wrong</h2>
+              <p className="mb-6 text-sm text-[color:var(--text-secondary)]">
                 {errorMessage ?? 'An unexpected error occurred.'}
               </p>
             </>
           )}
 
           {/* Always show "Start over" link */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
+          <div className="mt-6 border-t border-[color:var(--border-soft)] pt-6">
             <Link
               href="/"
-              className="text-sm text-purple-600 hover:text-purple-700 underline"
+              className="text-sm font-semibold text-[color:var(--brand-primary)] underline hover:text-[color:var(--brand-primary-hover)]"
             >
-              ← Start over
+              Back to Crochet Canvas
             </Link>
           </div>
         </div>
@@ -280,8 +287,8 @@ export default function SuccessPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <span className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+        <div className="crochet-page flex min-h-screen items-center justify-center">
+          <span className="h-10 w-10 animate-spin rounded-full border-4 border-[color:var(--border-soft)] border-t-[color:var(--brand-primary)]" />
         </div>
       }
     >

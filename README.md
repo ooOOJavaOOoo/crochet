@@ -1,6 +1,6 @@
-# Tapestry Crochet Pattern Generator
+# Crochet Canvas
 
-A webapp that converts images into tapestry crochet patterns using Google Gemini AI and Vertex AI Imagen.
+Crochet Canvas is a webapp that converts images into tapestry crochet patterns using Google Gemini AI and Vertex AI Imagen.
 
 ## Features
 
@@ -32,6 +32,7 @@ See `.env.local.example` for a full list. At minimum you need:
 | `JWT_SECRET` | Random 256-bit secret for one-time download tokens |
 | `CRON_SECRET` | Bearer token that authorises the cleanup cron job |
 | `NEXT_PUBLIC_APP_URL` | Publicly reachable base URL, e.g. `https://yourapp.vercel.app` |
+| `AMAZON_ASSOCIATE_TAG` | Amazon Associates tracking ID used in all shopping links, e.g. `yourstore-20` |
 | `KV_REST_API_URL` | Vercel KV REST endpoint |
 | `KV_REST_API_TOKEN` | Vercel KV REST token |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob read/write token |
