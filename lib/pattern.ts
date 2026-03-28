@@ -1,4 +1,4 @@
-import Jimp from 'jimp';
+import { Jimp, ResizeStrategy } from 'jimp';
 import type {
   PaletteEntry,
   PatternQualityMetrics,
@@ -234,7 +234,7 @@ function applyAdaptiveFlatRegionSmoothing(opts: {
   return out;
 }
 
-function extractRgbPixels(image: Jimp): RgbPixel[] {
+function extractRgbPixels(image: { bitmap: { data: ArrayLike<number> } }): RgbPixel[] {
   const { data } = image.bitmap;
   const pixels: RgbPixel[] = [];
   for (let i = 0; i < data.length; i += 4) {
@@ -582,7 +582,7 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
 
   // ── Step 2: Read with Jimp, resize to grid dimensions ────────────────────
   const image = await Jimp.read(buffer);
-  image.resize(gridWidth, gridHeight, Jimp.RESIZE_BILINEAR);
+  image.resize({ w: gridWidth, h: gridHeight, mode: ResizeStrategy.BILINEAR });
 
   // ── Step 3: Resolve effective color count and adapt low-color images ──────
   const originalPixels = extractRgbPixels(image);
