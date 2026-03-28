@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:wolf": "node scripts/verify-wolf.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.43",

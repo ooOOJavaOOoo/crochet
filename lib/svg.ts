@@ -5,11 +5,11 @@ import type { PaletteEntry } from './types';
 // ---------------------------------------------------------------------------
 
 const CELL_SIZE     = 8;   // pixels per stitch cell
-const LEGEND_HEIGHT = 60;  // pixels reserved below the chart
-const ENTRY_W       = 80;  // pixels per legend entry (swatch + symbol + hex)
-const LABEL_BAND_X  = 28;  // horizontal space for row numbers
-const LABEL_BAND_Y  = 18;  // vertical space for column numbers
-const LABEL_BAND_R  = 28;  // right-side gutter for row labels on the right edge
+const LEGEND_HEIGHT = 68;  // pixels reserved below the chart
+const ENTRY_W       = 96;  // pixels per legend entry (swatch + symbol + hex)
+const LABEL_BAND_X  = 36;  // horizontal space for row numbers
+const LABEL_BAND_Y  = 22;  // vertical space for column numbers
+const LABEL_BAND_R  = 36;  // right-side gutter for row labels on the right edge
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -41,7 +41,7 @@ function renderLegend(
   offsetY: number,
 ): string {
   const entriesPerRow = Math.max(1, Math.floor(chartWidth / ENTRY_W));
-  const rowHeight     = 26; // px per legend row
+  const rowHeight     = 30; // px per legend row
   const parts: string[] = [];
 
   palette.forEach((entry, i) => {
@@ -53,9 +53,9 @@ function renderLegend(
     const symSafe = esc(entry.symbol);
 
     parts.push(
-      `<rect x="${ex}" y="${ey}" width="12" height="12" fill="${hexSafe}" stroke="#ccc" stroke-width="0.5"/>`,
-      `<text x="${ex + 14}" y="${ey + 10}" font-family="monospace" font-size="10" fill="#333">${symSafe}</text>`,
-      `<text x="${ex + 26}" y="${ey + 10}" font-family="monospace" font-size="8"  fill="#666">${hexSafe}</text>`,
+      `<rect x="${ex}" y="${ey}" width="14" height="14" fill="${hexSafe}" stroke="#bfbfbf" stroke-width="0.7"/>`,
+      `<text x="${ex + 17}" y="${ey + 11}" font-family="monospace" font-size="11" fill="#1f2937">${symSafe}</text>`,
+      `<text x="${ex + 33}" y="${ey + 11}" font-family="monospace" font-size="9" fill="#374151">${hexSafe}</text>`,
     );
   });
 
@@ -66,7 +66,7 @@ function getLegendHeight(entryCount: number, chartWidth: number): number {
   if (entryCount <= 0) return LEGEND_HEIGHT;
   const entriesPerRow = Math.max(1, Math.floor(chartWidth / ENTRY_W));
   const rows = Math.ceil(entryCount / entriesPerRow);
-  return Math.max(LEGEND_HEIGHT, rows * 26 + 12);
+  return Math.max(LEGEND_HEIGHT, rows * 30 + 12);
 }
 
 function niceTickStep(minimum: number): number {
@@ -143,8 +143,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       const x = chartX + col * CELL_SIZE + CELL_SIZE / 2;
 
       parts.push(
-        `<text x="${x}" y="${chartY - 5}" font-family="monospace" font-size="8" fill="#666" text-anchor="middle">${label}</text>`,
-        `<text x="${x}" y="${chartY + chartHeight + 12}" font-family="monospace" font-size="8" fill="#666" text-anchor="middle">${label}</text>`,
+        `<text x="${x}" y="${chartY - 7}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="middle">${label}</text>`,
+        `<text x="${x}" y="${chartY + chartHeight + 14}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="middle">${label}</text>`,
       );
     }
 
@@ -154,8 +154,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       const y = chartY + (renderRows - 1 - row) * CELL_SIZE + CELL_SIZE / 2 + 3;
 
       parts.push(
-        `<text x="${chartX - 4}" y="${y}" font-family="monospace" font-size="8" fill="#666" text-anchor="end">${label}</text>`,
-        `<text x="${chartX + chartWidth + 4}" y="${y}" font-family="monospace" font-size="8" fill="#666" text-anchor="start">${label}</text>`,
+        `<text x="${chartX - 6}" y="${y}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="end">${label}</text>`,
+        `<text x="${chartX + chartWidth + 6}" y="${y}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="start">${label}</text>`,
       );
     }
   }
