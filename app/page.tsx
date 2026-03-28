@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { ChangeEvent, useEffect, useReducer } from 'react';
-import type { PatternData, StitchType, YarnWeight } from '@/lib/types';
+import type { PatternData, RenderMode, StitchType, YarnWeight } from '@/lib/types';
+import AffiliateAdStrip from '@/app/components/AffiliateAdStrip';
 import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook } from '@/lib/yarnWeight';
 
 type Step = 'image' | 'settings' | 'generating' | 'preview' | 'buying';
@@ -119,7 +120,7 @@ const FAQ_ITEMS = [
   {
     question: 'What do I get after checkout?',
     answer:
-      'You receive the full downloadable PDF pattern with complete legend and yarn inventory details.',
+      'You receive the full downloadable PDF pattern with both a stitch chart grid and row-by-row written instructions, plus the complete legend and yarn inventory details.',
   },
   {
     question: 'Are outputs okay for shop listings and commercial use?',
@@ -170,6 +171,8 @@ interface State {
   gridWidth: number;
   gridHeight: number;
   colorCount: number;
+  renderMode: RenderMode;
+  flattenBackgroundRegions: boolean;
   stitchType: StitchType;
   yarnWeight: YarnWeight;
   hookSize: string;
@@ -190,6 +193,8 @@ type Action =
   | { type: 'SetGridWidth'; gridWidth: number }
   | { type: 'SetGridHeight'; gridHeight: number }
   | { type: 'SetColorCount'; colorCount: number }
+  | { type: 'SetRenderMode'; renderMode: RenderMode }
+  | { type: 'SetFlattenBackgroundRegions'; flattenBackgroundRegions: boolean }
   | { type: 'SetStitchType'; stitchType: StitchType }
   | { type: 'SetYarnWeight'; yarnWeight: YarnWeight }
   | { type: 'SetHookSize'; hookSize: string }
@@ -212,6 +217,8 @@ const INITIAL_STATE: State = {
   gridWidth: initialPreset.width,
   gridHeight: initialPreset.height,
   colorCount: 6,
+  renderMode: 'photo-gradient',
+  flattenBackgroundRegions: false,
   stitchType: 'tapestry',
   yarnWeight: DEFAULT_YARN_WEIGHT,
   hookSize: getDefaultHook(DEFAULT_YARN_WEIGHT, 'tapestry'),
@@ -244,6 +251,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, gridHeight: action.gridHeight };
     case 'SetColorCount':
       return { ...state, colorCount: action.colorCount };
+    case 'SetRenderMode':
+      return { ...state, renderMode: action.renderMode };
+    case 'SetFlattenBackgroundRegions':
+      return { ...state, flattenBackgroundRegions: action.flattenBackgroundRegions };
     case 'SetStitchType':
       return {
         ...state,
@@ -326,6 +337,9 @@ async function fileToBase64(file: File): Promise<string> {
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
+  const qaFlags = state.patternData?.qaFlags ?? [];
+  const qualityMetrics = state.patternData?.qualityMetrics;
+  const warningList = Array.from(new Set(activeQualityWarnings));
   const jsonLdPayloads = [
     {
       '@context': 'https://schema.org',
@@ -475,6 +489,8 @@ export default function HomePage() {
           gridWidth: state.gridWidth,
           gridHeight: state.gridHeight,
           colorCount: state.colorCount,
+          renderMode: state.renderMode,
+          flattenBackgroundRegions: state.flattenBackgroundRegions,
           stitchType: state.stitchType,
           yarnWeight: state.yarnWeight,
           hookSize: state.hookSize,
@@ -804,6 +820,46 @@ export default function HomePage() {
                   )}
                 </div>
 
+                <div className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-white/80 px-4 py-4">
+                  <p className="form-label">Render style</p>
+                  <div className="segmented-control">
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'SetRenderMode', renderMode: 'graphic-clean-art' })}
+                      className={`segmented-button ${state.renderMode === 'graphic-clean-art' ? 'segmented-button-active' : ''}`}
+                    >
+                      Graphic/Clean Art
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'SetRenderMode', renderMode: 'photo-gradient' })}
+                      className={`segmented-button ${state.renderMode === 'photo-gradient' ? 'segmented-button-active' : ''}`}
+                    >
+                      Photo/Gradient
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
+                    Use Graphic/Clean Art for sharper edges and flatter zones. Use Photo/Gradient to preserve tonal transitions.
+                  </p>
+
+                  <label className="mt-3 flex items-start gap-2 rounded-xl bg-[color:var(--surface-subtle)]/70 px-3 py-3 text-sm text-[color:var(--foreground)]">
+                    <input
+                      type="checkbox"
+                      checked={state.flattenBackgroundRegions}
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'SetFlattenBackgroundRegions',
+                          flattenBackgroundRegions: event.target.checked,
+                        })
+                      }
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Flatten background regions (sky/ground/tree masses) for simpler beginner-friendly charts.
+                    </span>
+                  </label>
+                </div>
+
                 <div>
                   <p className="form-label">Stitch type</p>
                   <div className="segmented-control">
@@ -938,9 +994,14 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {activeQualityWarnings.length > 0 && (
+              {warningList.length > 0 && (
                 <div className="mb-4 rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-4 py-3 text-sm leading-6 text-[color:var(--foreground)]">
-                  {activeQualityWarnings[0]}
+                  <p className="font-semibold">Quality checks</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {warningList.map((warning, index) => (
+                      <li key={`${warning}-${index}`}>{warning}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
@@ -1005,6 +1066,9 @@ export default function HomePage() {
                           ? ` Purchase the PDF to unlock the remaining ${state.previewData.hiddenLegendCount} colors and full yarn inventory.`
                           : ' Purchase the PDF to unlock the complete pattern and yarn inventory.'}
                       </p>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-[color:var(--text-secondary)]">
+                        Final PDF includes both formats: a full stitch chart grid and written row-by-row instructions.
+                      </p>
                     </div>
                     <div className="flex -space-x-2">
                       {state.previewData.colorLegend.slice(0, 5).map((entry, index) => (
@@ -1046,6 +1110,51 @@ export default function HomePage() {
                   </div>
                 </div>
 
+                <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
+                  <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">Pre-checkout QA</h3>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
+                    Automated checks run on every generated chart to catch readability risks before purchase.
+                  </p>
+
+                  {qualityMetrics && (
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl bg-[color:var(--surface-subtle)] px-3 py-3">
+                        <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">Duplicate colors</p>
+                        <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
+                          {Math.round(qualityMetrics.duplicateColorRatio * 100)}%
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-[color:var(--surface-subtle)] px-3 py-3">
+                        <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">Fragmentation</p>
+                        <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
+                          {Math.round(qualityMetrics.flatRegionFragmentation * 100)}%
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-[color:var(--surface-subtle)] px-3 py-3">
+                        <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">Sky/tree continuity</p>
+                        <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
+                          {qualityMetrics.skyTreeContinuityScore}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {qaFlags.length > 0 ? (
+                    <div className="mt-4 rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-4 py-3">
+                      <p className="text-sm font-semibold text-[color:var(--foreground)]">Flags to review before checkout:</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-[color:var(--foreground)]">
+                        {qaFlags.map((flag, index) => (
+                          <li key={`${flag}-${index}`}>{flag}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-2xl border border-[color:var(--border-soft)] bg-white/70 px-4 py-3 text-sm text-[color:var(--text-secondary)]">
+                      No critical QA flags detected for this chart.
+                    </p>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={handleCheckout}
@@ -1069,6 +1178,10 @@ export default function HomePage() {
               <p className="mt-3 text-sm leading-6 text-[color:var(--text-secondary)]">{step.description}</p>
             </article>
           ))}
+        </section>
+
+        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/60 p-6 sm:p-8">
+          <AffiliateAdStrip filter={['hook', 'accessory']} heading="Recommended Hooks & Tools" />
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-3">
@@ -1097,6 +1210,10 @@ export default function HomePage() {
               </details>
             ))}
           </div>
+        </section>
+
+        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/60 p-6 sm:p-8">
+          <AffiliateAdStrip filter={['yarn', 'book']} heading="Yarns & Learning Resources" />
         </section>
 
         <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-gradient-to-r from-[rgba(184,92,56,0.11)] to-[rgba(53,98,74,0.11)] px-6 py-8 sm:px-8 sm:py-10">

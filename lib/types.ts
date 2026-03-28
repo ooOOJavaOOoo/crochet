@@ -4,6 +4,14 @@ export type StitchType = 'tapestry' | 'c2c';
 
 export type YarnWeight = 'fingering' | 'sport' | 'dk' | 'worsted' | 'bulky' | 'super-bulky';
 
+export type RenderMode = 'graphic-clean-art' | 'photo-gradient';
+
+export interface PatternQualityMetrics {
+  duplicateColorRatio: number;
+  flatRegionFragmentation: number;
+  skyTreeContinuityScore: number;
+}
+
 export interface PaletteEntry {
   index: number;
   hex: string;
@@ -36,7 +44,11 @@ export interface PatternData {
   stitchType: StitchType;
   yarnWeight: YarnWeight;
   hookSize: string;
+  renderMode?: RenderMode;
+  flattenBackgroundRegions?: boolean;
   qualityWarnings?: string[];
+  qualityMetrics?: PatternQualityMetrics;
+  qaFlags?: string[];
   createdAt: string;
 }
 

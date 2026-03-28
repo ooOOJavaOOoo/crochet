@@ -10,6 +10,8 @@ const MICHAELS_DEFAULT_QUERY = 'crochet supplies';
 // Michaels CJ advertiser ID (Commission Junction program)
 const MICHAELS_CJ_ADVERTISER_ID = '10045459';
 const CJ_CLICK_BASE = 'https://www.anrdoezrs.net/click';
+const DIGITS_ONLY = /^\d+$/;
+const AMAZON_ASSOCIATE_TAG = /^[a-z0-9][a-z0-9-]{1,48}-20$/i;
 
 function getAmazonAssociateTag(): string {
   const envTag =
@@ -18,17 +20,29 @@ function getAmazonAssociateTag(): string {
     process.env.AMAZON_AFFILIATE_TAG;
 
   const tag = envTag?.trim();
-  return tag && tag.length > 0 ? tag : AMAZON_FALLBACK_ASSOCIATE_TAG;
+  if (!tag || tag.length === 0) {
+    return AMAZON_FALLBACK_ASSOCIATE_TAG;
+  }
+
+  return AMAZON_ASSOCIATE_TAG.test(tag) ? tag : AMAZON_FALLBACK_ASSOCIATE_TAG;
 }
 
 function getMichaelsCjPublisherId(): string | null {
   const id = process.env.MICHAELS_CJ_PUBLISHER_ID?.trim();
-  return id && id.length > 0 ? id : null;
+  if (!id || id.length === 0) {
+    return null;
+  }
+
+  return DIGITS_ONLY.test(id) ? id : null;
 }
 
 function getMichaelsCjAdvertiserId(): string {
   const id = process.env.MICHAELS_CJ_ADVERTISER_ID?.trim();
-  return id && id.length > 0 ? id : MICHAELS_CJ_ADVERTISER_ID;
+  if (!id || id.length === 0) {
+    return MICHAELS_CJ_ADVERTISER_ID;
+  }
+
+  return DIGITS_ONLY.test(id) ? id : MICHAELS_CJ_ADVERTISER_ID;
 }
 
 function sanitizeQuery(query: string): string {
@@ -42,6 +56,12 @@ function sanitizeQuery(query: string): string {
 // Keep old name as an alias so existing callers aren't broken
 function sanitizeAmazonQuery(query: string): string {
   return sanitizeQuery(query);
+}
+
+function buildCjClickUrl(targetUrl: string, publisherId: string, advertiserId: string): string {
+  const cjClickUrl = new URL(`${CJ_CLICK_BASE}-${publisherId}-${advertiserId}`);
+  cjClickUrl.searchParams.set('url', targetUrl);
+  return cjClickUrl.toString();
 }
 
 function createAmazonSearchUrl(query: string): string {
@@ -69,7 +89,7 @@ function createMichaelsSearchUrl(query: string): string {
   // If a CJ publisher ID is configured, wrap with the CJ affiliate deep link
   if (publisherId) {
     const advertiserId = getMichaelsCjAdvertiserId();
-    return `${CJ_CLICK_BASE}-${publisherId}-${advertiserId}?url=${encodeURIComponent(targetUrl.toString())}`;
+    return buildCjClickUrl(targetUrl.toString(), publisherId, advertiserId);
   }
 
   return targetUrl.toString();

@@ -25,6 +25,8 @@ const schema = z.object({
   stitchType: z.enum(['tapestry', 'c2c']).optional().default('tapestry'),
   yarnWeight: z.enum(['fingering', 'sport', 'dk', 'worsted', 'bulky', 'super-bulky']).optional().default('worsted'),
   hookSize: z.string().max(30).optional(),
+  renderMode: z.enum(['graphic-clean-art', 'photo-gradient']).optional().default('photo-gradient'),
+  flattenBackgroundRegions: z.boolean().optional().default(false),
   useAiColorMatch: z.boolean().optional().default(false),
 });
 
@@ -49,7 +51,20 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: parsed.error.issues }, { status: 400 });
     }
 
-    const { imageBase64, gridWidth, gridHeight, colorCount, brandId, selectedYarnColorIds, stitchType, yarnWeight, hookSize, useAiColorMatch } = parsed.data;
+    const {
+      imageBase64,
+      gridWidth,
+      gridHeight,
+      colorCount,
+      brandId,
+      selectedYarnColorIds,
+      stitchType,
+      yarnWeight,
+      hookSize,
+      renderMode,
+      flattenBackgroundRegions,
+      useAiColorMatch,
+    } = parsed.data;
 
     // Strip optional data URI prefix and validate decoded size
     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -71,6 +86,8 @@ export async function POST(request: Request): Promise<Response> {
       stitchType,
       yarnWeight,
       hookSize,
+      renderMode,
+      flattenBackgroundRegions,
     });
 
     // Apply AI color matching if requested

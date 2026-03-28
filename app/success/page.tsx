@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { ShoppingListItem } from '@/lib/types';
+import AffiliateAdStrip from '@/app/components/AffiliateAdStrip';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ function SuccessContent() {
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-14">
+      <main className="flex flex-1 flex-col items-center justify-start px-4 py-10 sm:py-14">
         <div className="crochet-card w-full max-w-lg rounded-[1.75rem] p-8 text-center sm:p-10">
 
           {/* Polling state */}
@@ -204,7 +205,7 @@ function SuccessContent() {
 
               {shoppingList.length > 0 && (
                 <div className="mt-8 rounded-2xl border border-[color:var(--border-soft)] bg-white/70 p-4 text-left">
-                  <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Amazon Shopping List</h3>
+                  <h3 className="text-sm font-semibold text-[color:var(--foreground)]">Shopping Links</h3>
                   <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
                     Auto-built from your pattern materials so you can order everything quickly.
                   </p>
@@ -221,14 +222,26 @@ function SuccessContent() {
                             {item.notes ? ` • ${item.notes}` : ''}
                           </p>
                         </div>
-                        <a
-                          href={item.amazonSearchUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="shrink-0 rounded-md border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] hover:bg-[color:var(--surface-subtle)]"
-                        >
-                          View on Amazon
-                        </a>
+                        <div className="flex shrink-0 items-start gap-2">
+                          <a
+                            href={item.amazonSearchUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-md border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] hover:bg-[color:var(--surface-subtle)]"
+                          >
+                            Amazon
+                          </a>
+                          {item.michaelsSearchUrl && (
+                            <a
+                              href={item.michaelsSearchUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-md border border-[color:var(--border-soft)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--brand-primary)] hover:bg-[color:var(--surface-subtle)]"
+                            >
+                              Michaels
+                            </a>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -275,6 +288,11 @@ function SuccessContent() {
               Back to Crochet Canvas
             </Link>
           </div>
+        </div>
+
+        {/* Affiliate recommendations — shown to all visitors once the page loads */}
+        <div className="mt-8 w-full max-w-3xl rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/60 p-6">
+          <AffiliateAdStrip heading="Complete Your Craft Supply Kit" />
         </div>
       </main>
     </div>
