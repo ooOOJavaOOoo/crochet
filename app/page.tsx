@@ -527,12 +527,6 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-secondary)]">
-                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Colors: {state.colorCount}</span>
-                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Hook: {state.hookSize}</span>
-                <span className="rounded-full bg-white/70 px-4 py-2 font-semibold">Brand: {YARN_BRANDS.find((brand) => brand.value === state.brandId)?.label ?? 'Any'}</span>
-              </div>
-
               <div className="mt-5 grid gap-2 sm:grid-cols-3">
                 {TRUST_POINTS.map((point) => (
                   <div key={point} className="trust-card rounded-2xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-secondary)]">
