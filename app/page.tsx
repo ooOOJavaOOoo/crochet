@@ -128,6 +128,23 @@ const FAQ_ITEMS = [
   },
 ];
 
+const DEFAULT_APP_URL = 'https://crochetcanvas.com';
+
+function getSiteUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!raw) {
+    return DEFAULT_APP_URL;
+  }
+
+  try {
+    return new URL(raw).toString().replace(/\/$/, '');
+  } catch {
+    return DEFAULT_APP_URL;
+  }
+}
+
+const siteUrl = getSiteUrl();
+
 const STUDIO_THEME_IMAGES = [
   {
     label: 'Granny square texture',
@@ -309,6 +326,42 @@ async function fileToBase64(file: File): Promise<string> {
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
+  const jsonLdPayloads = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Crochet Canvas',
+      url: siteUrl,
+      logo: `${siteUrl}/crochet-canvas-logo.svg`,
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Crochet Canvas',
+      applicationCategory: 'DesignApplication',
+      operatingSystem: 'Web',
+      description:
+        'Turn any image into a polished tapestry crochet pattern with chart previews, yarn planning, and instant PDF delivery.',
+      offers: {
+        '@type': 'Offer',
+        price: '4.99',
+        priceCurrency: 'USD',
+      },
+      url: siteUrl,
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ_ITEMS.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer,
+        },
+      })),
+    },
+  ];
 
   const getYarnDisplayName = (item: {
     yarnBrand?: string;
@@ -484,6 +537,13 @@ export default function HomePage() {
 
   return (
     <div className="crochet-page min-h-screen text-[color:var(--foreground)]">
+      {jsonLdPayloads.map((payload, index) => (
+        <script
+          key={`jsonld-${index}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
+        />
+      ))}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="crochet-hero mb-8 rounded-[2rem] px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
           <div aria-hidden="true" className="skein skein-peach float-gentle right-6 top-6 hidden lg:block" />

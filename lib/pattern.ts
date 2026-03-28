@@ -256,11 +256,56 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   const counts = new Array<number>(palette.length).fill(0);
   for (const idx of pixelIndices) counts[idx]++;
   palette.forEach((p, i) => { p.pixelCount = counts[i]; });
+  // ── Step 8.5: Deduplicate palette entries with identical yarn matches ─────
+  // When multiple quantized colors snap to the same yarn product, merge them.
+  const dedupeMap = new Map<number, number>(); // old palette index → new index
+  const filteredPalette: PaletteEntry[] = [];
+
+  for (let i = 0; i < palette.length; i++) {
+    const current = palette[i];
+    let mergedTo = -1;
+
+    // Check if this color already exists in filteredPalette
+    for (let j = 0; j < filteredPalette.length; j++) {
+      const existing = filteredPalette[j];
+      const sameHex = current.hex === existing.hex;
+      const sameYarn =
+        current.yarnBrand === existing.yarnBrand &&
+        current.yarnColorName === existing.yarnColorName;
+
+      // Merge if both hex and yarn match are the same, or if yarn matches are identical and defined
+      if ((sameHex && sameYarn) || (sameYarn && current.yarnBrand !== undefined)) {
+        // Accumulate stitches on the earlier index
+        existing.pixelCount += current.pixelCount;
+        dedupeMap.set(i, j);
+        mergedTo = j;
+        break;
+      }
+    }
+
+    if (mergedTo === -1) {
+      // New unique color; add to filteredPalette and update its index/symbol
+      current.index = filteredPalette.length;
+      current.symbol = String.fromCharCode(65 + filteredPalette.length);
+      filteredPalette.push(current);
+      dedupeMap.set(i, filteredPalette.length - 1);
+    }
+  }
+
+  // Remap pixelIndices and stitchGrid to use deduplicated palette indices
+  const remappedPixelIndices = pixelIndices.map((idx) => dedupeMap.get(idx)!);
+  const remappedStitchGrid: number[][] = Array.from({ length: gridHeight }, (_, gridRow) => {
+    const imageRow = gridHeight - 1 - gridRow;
+    return Array.from({ length: gridWidth }, (_, col) => {
+      return remappedPixelIndices[imageRow * gridWidth + col];
+    });
+  });
+
 
   // ── Step 9: Compute yarn inventory ───────────────────────────────────────
   const skeinYardage = getSkeinYardage(resolvedBrandId);
   const yardsPerUnit = stitchType === 'c2c' ? weightConfig.c2cYardsPerBlock : weightConfig.tapestryYardsPerStitch;
-  const inventory: YarnInventoryEntry[] = palette.map((p) => {
+  const inventory: YarnInventoryEntry[] = filteredPalette.map((p) => {
     const yardsNeeded  = p.pixelCount * yardsPerUnit * (1 + BUFFER_PERCENT);
     const skeinsNeeded = Math.ceil(yardsNeeded / skeinYardage);
     return {
@@ -276,8 +321,8 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   });
 
   return {
-    stitchGrid,
-    palette,
+    stitchGrid: remappedStitchGrid,
+    palette: filteredPalette,
     dimensions: { width: gridWidth, height: gridHeight },
     inventory,
     aspectRatio: gridWidth / gridHeight,

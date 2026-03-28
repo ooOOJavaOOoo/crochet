@@ -5,6 +5,12 @@ const AMAZON_SEARCH_URL = 'https://www.amazon.com/s';
 const AMAZON_DEFAULT_QUERY = 'crochet supplies';
 const AMAZON_FALLBACK_ASSOCIATE_TAG = 'changeme-20';
 
+const MICHAELS_SEARCH_URL = 'https://www.michaels.com/search';
+const MICHAELS_DEFAULT_QUERY = 'crochet supplies';
+// Michaels CJ advertiser ID (Commission Junction program)
+const MICHAELS_CJ_ADVERTISER_ID = '10045459';
+const CJ_CLICK_BASE = 'https://www.anrdoezrs.net/click';
+
 function getAmazonAssociateTag(): string {
   const envTag =
     process.env.AMAZON_ASSOCIATE_TAG ??
@@ -15,12 +21,27 @@ function getAmazonAssociateTag(): string {
   return tag && tag.length > 0 ? tag : AMAZON_FALLBACK_ASSOCIATE_TAG;
 }
 
-function sanitizeAmazonQuery(query: string): string {
+function getMichaelsCjPublisherId(): string | null {
+  const id = process.env.MICHAELS_CJ_PUBLISHER_ID?.trim();
+  return id && id.length > 0 ? id : null;
+}
+
+function getMichaelsCjAdvertiserId(): string {
+  const id = process.env.MICHAELS_CJ_ADVERTISER_ID?.trim();
+  return id && id.length > 0 ? id : MICHAELS_CJ_ADVERTISER_ID;
+}
+
+function sanitizeQuery(query: string): string {
   return query
     .normalize('NFKC')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 180);
+}
+
+// Keep old name as an alias so existing callers aren't broken
+function sanitizeAmazonQuery(query: string): string {
+  return sanitizeQuery(query);
 }
 
 function createAmazonSearchUrl(query: string): string {
@@ -34,6 +55,24 @@ function createAmazonSearchUrl(query: string): string {
   url.searchParams.set('ref', 'as_li_ss_tl');
 
   return url.toString();
+}
+
+function createMichaelsSearchUrl(query: string): string {
+  const sanitizedQuery = sanitizeQuery(query) || MICHAELS_DEFAULT_QUERY;
+
+  // Direct Michaels search URL
+  const targetUrl = new URL(MICHAELS_SEARCH_URL);
+  targetUrl.searchParams.set('q', sanitizedQuery);
+
+  const publisherId = getMichaelsCjPublisherId();
+
+  // If a CJ publisher ID is configured, wrap with the CJ affiliate deep link
+  if (publisherId) {
+    const advertiserId = getMichaelsCjAdvertiserId();
+    return `${CJ_CLICK_BASE}-${publisherId}-${advertiserId}?url=${encodeURIComponent(targetUrl.toString())}`;
+  }
+
+  return targetUrl.toString();
 }
 
 function pluralize(unit: string, count: number): string {
@@ -66,6 +105,7 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
         unit: 'skein',
         query,
         amazonSearchUrl: createAmazonSearchUrl(query),
+        michaelsSearchUrl: createMichaelsSearchUrl(query),
         notes: `Approx. ${Math.ceil(entry.yardsNeeded)} yards needed for this color`,
       } satisfies ShoppingListItem;
     });
@@ -79,6 +119,7 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
       unit: 'hook',
       query: `${pattern.hookSize} crochet hook ergonomic`,
       amazonSearchUrl: createAmazonSearchUrl(`${pattern.hookSize} crochet hook ergonomic`),
+      michaelsSearchUrl: createMichaelsSearchUrl(`${pattern.hookSize} crochet hook`),
     },
     {
       id: 'tool-needle',
@@ -88,6 +129,7 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
       unit: 'set',
       query: 'large eye tapestry needles yarn weaving',
       amazonSearchUrl: createAmazonSearchUrl('large eye tapestry needles yarn weaving'),
+      michaelsSearchUrl: createMichaelsSearchUrl('tapestry needles yarn'),
     },
     {
       id: 'tool-markers',
@@ -97,6 +139,7 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
       unit: 'pack',
       query: 'locking stitch markers for crochet',
       amazonSearchUrl: createAmazonSearchUrl('locking stitch markers for crochet'),
+      michaelsSearchUrl: createMichaelsSearchUrl('locking stitch markers crochet'),
     },
     {
       id: 'tool-scissors',
@@ -106,6 +149,7 @@ export function buildAmazonShoppingList(pattern: PatternData): ShoppingListItem[
       unit: 'pair',
       query: 'small embroidery scissors yarn snips',
       amazonSearchUrl: createAmazonSearchUrl('small embroidery scissors yarn snips'),
+      michaelsSearchUrl: createMichaelsSearchUrl('embroidery scissors yarn snips'),
     },
   ];
 

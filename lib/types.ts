@@ -71,6 +71,7 @@ export interface ShoppingListItem {
   unit: string;
   query: string;
   amazonSearchUrl: string;
+  michaelsSearchUrl?: string;
   notes?: string;
 }
 
