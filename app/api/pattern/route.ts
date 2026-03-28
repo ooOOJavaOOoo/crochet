@@ -9,7 +9,7 @@ import type { PatternData, StoredPattern } from '@/lib/types';
 import { type QuantizeResult } from '@/lib/pattern';
 import { generateTitle } from '@/lib/prompts/titleGenerator';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
-import { getFriendlyColorName, findYarnColorByName } from '@/lib/yarn';
+import { getFriendlyColorName, findYarnColorByName, getSkeinYardage } from '@/lib/yarn';
 import { matchColors, type YarnBrand } from '@/lib/prompts/colorMatcher';
 
 export const runtime = 'nodejs';
@@ -112,6 +112,72 @@ export async function POST(request: Request): Promise<Response> {
           rawPattern.palette[i].yarnBrand = yarnRecord.brand;
           rawPattern.palette[i].yarnColorName = yarnRecord.name;
         }
+      }
+
+      // Re-deduplicate: AI matching may have assigned the same yarn to multiple palette
+      // entries. Merge them now so the materials list has no duplicate color rows.
+      const mergeKeyToNewIdx = new Map<string, number>();
+      const mergedPalette: typeof rawPattern.palette = [];
+      const oldToNewIdx = new Map<number, number>();
+
+      for (const entry of rawPattern.palette) {
+        const key =
+          entry.yarnBrand && entry.yarnColorName
+            ? `${entry.yarnBrand}::${entry.yarnColorName}`
+            : entry.hex;
+
+        if (mergeKeyToNewIdx.has(key)) {
+          const newIdx = mergeKeyToNewIdx.get(key)!;
+          mergedPalette[newIdx].pixelCount += entry.pixelCount;
+          oldToNewIdx.set(entry.index, newIdx);
+        } else {
+          const newIdx = mergedPalette.length;
+          mergeKeyToNewIdx.set(key, newIdx);
+          mergedPalette.push({
+            ...entry,
+            index: newIdx,
+            symbol: String.fromCharCode(65 + newIdx),
+          });
+          oldToNewIdx.set(entry.index, newIdx);
+        }
+      }
+
+      if (mergedPalette.length < rawPattern.palette.length) {
+        // Remap stitch grid to new indices
+        rawPattern.stitchGrid = rawPattern.stitchGrid.map((row) =>
+          row.map((idx) => oldToNewIdx.get(idx) ?? idx),
+        );
+        rawPattern.palette = mergedPalette;
+
+        // Rebuild inventory by summing yards/stitches per merged group
+        const skeinYardage = getSkeinYardage(brandId);
+        const mergedInvMap = new Map<number, (typeof rawPattern.inventory)[0]>();
+
+        for (const inv of rawPattern.inventory) {
+          const newIdx = oldToNewIdx.get(inv.paletteIndex) ?? inv.paletteIndex;
+          const p = mergedPalette[newIdx];
+          if (mergedInvMap.has(newIdx)) {
+            const existing = mergedInvMap.get(newIdx)!;
+            existing.totalStitches += inv.totalStitches;
+            existing.yardsNeeded += inv.yardsNeeded;
+            existing.skeinsNeeded = Math.ceil(existing.yardsNeeded / skeinYardage);
+          } else {
+            mergedInvMap.set(newIdx, {
+              ...inv,
+              paletteIndex: newIdx,
+              symbol: p.symbol,
+              hex: p.hex,
+              yarnBrand: p.yarnBrand,
+              yarnColorName: p.yarnColorName,
+            });
+          }
+        }
+
+        rawPattern.inventory = mergedPalette.map((_, idx) => {
+          const inv = mergedInvMap.get(idx);
+          if (!inv) throw new Error(`Missing inventory for merged palette index ${idx}`);
+          return inv;
+        });
       }
     }
 

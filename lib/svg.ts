@@ -9,7 +9,7 @@ const LEGEND_HEIGHT = 60;  // pixels reserved below the chart
 const ENTRY_W       = 80;  // pixels per legend entry (swatch + symbol + hex)
 const LABEL_BAND_X  = 28;  // horizontal space for row numbers
 const LABEL_BAND_Y  = 18;  // vertical space for column numbers
-const LABEL_BAND_R  = 12;  // right-side gutter for the last column label
+const LABEL_BAND_R  = 28;  // right-side gutter for row labels on the right edge
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -60,6 +60,13 @@ function renderLegend(
   });
 
   return parts.join('\n');
+}
+
+function getLegendHeight(entryCount: number, chartWidth: number): number {
+  if (entryCount <= 0) return LEGEND_HEIGHT;
+  const entriesPerRow = Math.max(1, Math.floor(chartWidth / ENTRY_W));
+  const rows = Math.ceil(entryCount / entriesPerRow);
+  return Math.max(LEGEND_HEIGHT, rows * 26 + 12);
 }
 
 function niceTickStep(minimum: number): number {
@@ -114,9 +121,11 @@ export function renderStitchChart(opts: SvgChartOptions): string {
   const chartRightPad = showAxisLabels ? LABEL_BAND_R : 0;
   const chartHeight = renderRows * CELL_SIZE;
   const chartWidth  = cols * CELL_SIZE;
+  const legendPalette = legendLimit === undefined ? palette : palette.slice(0, legendLimit);
+  const legendHeight = preview ? LEGEND_HEIGHT : getLegendHeight(legendPalette.length, chartWidth);
   const legendY     = chartY + chartHeight + (showAxisLabels ? LABEL_BAND_Y : 0);
   const svgWidth    = chartX + chartWidth + chartRightPad;
-  const svgHeight   = legendY + LEGEND_HEIGHT;
+  const svgHeight   = legendY + legendHeight;
 
   const parts: string[] = [];
 
@@ -146,6 +155,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
 
       parts.push(
         `<text x="${chartX - 4}" y="${y}" font-family="monospace" font-size="8" fill="#666" text-anchor="end">${label}</text>`,
+        `<text x="${chartX + chartWidth + 4}" y="${y}" font-family="monospace" font-size="8" fill="#666" text-anchor="start">${label}</text>`,
       );
     }
   }
@@ -159,23 +169,37 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       const pIdx = stitchGrid[row][col] ?? 0;
       const hex  = palette[pIdx]?.hex ?? '#CCCCCC';
       parts.push(
-        `<rect x="${chartX + col * CELL_SIZE}" y="${y}" width="${CELL_SIZE}" height="${CELL_SIZE}" fill="${esc(hex)}"/>`,
+        `<rect x="${chartX + col * CELL_SIZE}" y="${y}" width="${CELL_SIZE}" height="${CELL_SIZE}" fill="${esc(hex)}" shape-rendering="crispEdges"/>`,
       );
     }
+  }
+
+  // Light grid overlay keeps neighboring colors visually separable.
+  for (let col = 1; col < cols; col++) {
+    const x = chartX + col * CELL_SIZE;
+    parts.push(
+      `<line x1="${x}" y1="${chartY}" x2="${x}" y2="${chartY + chartHeight}" stroke="#d6dbe1" stroke-width="0.35" shape-rendering="crispEdges"/>`,
+    );
+  }
+
+  for (let row = 1; row < renderRows; row++) {
+    const y = chartY + row * CELL_SIZE;
+    parts.push(
+      `<line x1="${chartX}" y1="${y}" x2="${chartX + chartWidth}" y2="${y}" stroke="#d6dbe1" stroke-width="0.35" shape-rendering="crispEdges"/>`,
+    );
   }
 
   // ── Footer: teaser bar (preview) or color legend (full) ──────────────────
   if (preview) {
     parts.push(
-      `<rect x="0" y="${legendY}" width="${svgWidth}" height="${LEGEND_HEIGHT}" fill="#f5f5f5"/>`,
-      `<text x="${svgWidth / 2}" y="${legendY + LEGEND_HEIGHT / 2 + 6}" ` +
+      `<rect x="0" y="${legendY}" width="${svgWidth}" height="${legendHeight}" fill="#f5f5f5"/>`,
+      `<text x="${svgWidth / 2}" y="${legendY + legendHeight / 2 + 6}" ` +
         `font-family="sans-serif" font-size="13" font-weight="bold" fill="#888" ` +
         `text-anchor="middle">` +
         `Pattern preview (${Math.min(renderRows, totalRows)} of ${totalRows} rows shown)` +
         `</text>`,
     );
   } else {
-    const legendPalette = legendLimit === undefined ? palette : palette.slice(0, legendLimit);
     parts.push(renderLegend(legendPalette, chartWidth, chartX, legendY));
   }
 
