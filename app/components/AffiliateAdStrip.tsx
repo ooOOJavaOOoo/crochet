@@ -7,8 +7,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AMAZON_TAG = 'crochetcanvas-20';
-const MICHAELS_CJ_PUBLISHER_ID = '101715737';
 const MICHAELS_CJ_ADVERTISER_ID = '10045459';
+const DIGITS_ONLY = /^\d+$/;
 
 function buildAmazonUrl(query: string): string {
   const url = new URL('https://www.amazon.com/s');
@@ -22,7 +22,16 @@ function buildAmazonUrl(query: string): string {
 function buildMichaelsUrl(query: string): string {
   const target = new URL('https://www.michaels.com/search');
   target.searchParams.set('q', query);
-  return `https://www.anrdoezrs.net/click-${MICHAELS_CJ_PUBLISHER_ID}-${MICHAELS_CJ_ADVERTISER_ID}?url=${encodeURIComponent(target.toString())}`;
+
+  // Prefer configured CJ IDs, but fall back to direct Michaels search if unavailable.
+  const publisherId = process.env.NEXT_PUBLIC_MICHAELS_CJ_PUBLISHER_ID?.trim();
+  const advertiserId = process.env.NEXT_PUBLIC_MICHAELS_CJ_ADVERTISER_ID?.trim() || MICHAELS_CJ_ADVERTISER_ID;
+
+  if (!publisherId || !DIGITS_ONLY.test(publisherId) || !DIGITS_ONLY.test(advertiserId)) {
+    return target.toString();
+  }
+
+  return `https://www.anrdoezrs.net/click-${publisherId}-${advertiserId}?url=${encodeURIComponent(target.toString())}`;
 }
 
 type ProductCategory = 'hook' | 'yarn' | 'book' | 'accessory';

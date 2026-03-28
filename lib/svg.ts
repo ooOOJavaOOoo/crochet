@@ -20,6 +20,9 @@ export interface SvgChartOptions {
   palette: PaletteEntry[];
   preview?: boolean;        // if true: only render first 20 rows + teaser bar
   legendLimit?: number;
+  showLegend?: boolean;
+  rowLabelOffset?: number;
+  colLabelOffset?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +108,15 @@ function toColumnLabel(colIndex: number): string {
 // ---------------------------------------------------------------------------
 
 export function renderStitchChart(opts: SvgChartOptions): string {
-  const { stitchGrid, palette, preview = false, legendLimit } = opts;
+  const {
+    stitchGrid,
+    palette,
+    preview = false,
+    legendLimit,
+    showLegend = true,
+    rowLabelOffset = 0,
+    colLabelOffset = 0,
+  } = opts;
 
   if (!stitchGrid.length || !stitchGrid[0].length) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 0 0" width="0" height="0"/>`;
@@ -122,10 +133,14 @@ export function renderStitchChart(opts: SvgChartOptions): string {
   const chartHeight = renderRows * CELL_SIZE;
   const chartWidth  = cols * CELL_SIZE;
   const legendPalette = legendLimit === undefined ? palette : palette.slice(0, legendLimit);
-  const legendHeight = preview ? LEGEND_HEIGHT : getLegendHeight(legendPalette.length, chartWidth);
+  const legendHeight = showLegend
+    ? preview
+      ? LEGEND_HEIGHT
+      : getLegendHeight(legendPalette.length, chartWidth)
+    : 0;
   const legendY     = chartY + chartHeight + (showAxisLabels ? LABEL_BAND_Y : 0);
   const svgWidth    = chartX + chartWidth + chartRightPad;
-  const svgHeight   = legendY + legendHeight;
+  const svgHeight   = showLegend ? legendY + legendHeight : legendY;
 
   const parts: string[] = [];
 
@@ -139,7 +154,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
 
     for (let col = 0; col < cols; col++) {
       if (!shouldRenderTickLabel(col, cols, colTickStep)) continue;
-      const label = toColumnLabel(col);
+      const label = toColumnLabel(col + colLabelOffset);
       const x = chartX + col * CELL_SIZE + CELL_SIZE / 2;
 
       parts.push(
@@ -150,7 +165,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
 
     for (let row = 0; row < renderRows; row++) {
       if (!shouldRenderTickLabel(row, renderRows, rowTickStep)) continue;
-      const label = String(row + 1);
+      const label = String(row + 1 + rowLabelOffset);
       const y = chartY + (renderRows - 1 - row) * CELL_SIZE + CELL_SIZE / 2 + 3;
 
       parts.push(
@@ -190,7 +205,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
   }
 
   // ── Footer: teaser bar (preview) or color legend (full) ──────────────────
-  if (preview) {
+  if (showLegend && preview) {
     parts.push(
       `<rect x="0" y="${legendY}" width="${svgWidth}" height="${legendHeight}" fill="#f5f5f5"/>`,
       `<text x="${svgWidth / 2}" y="${legendY + legendHeight / 2 + 6}" ` +
@@ -199,7 +214,7 @@ export function renderStitchChart(opts: SvgChartOptions): string {
         `Pattern preview (${Math.min(renderRows, totalRows)} of ${totalRows} rows shown)` +
         `</text>`,
     );
-  } else {
+  } else if (showLegend) {
     parts.push(renderLegend(legendPalette, chartWidth, chartX, legendY));
   }
 

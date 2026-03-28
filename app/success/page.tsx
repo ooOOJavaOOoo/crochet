@@ -119,32 +119,24 @@ function SuccessContent() {
     };
   }, [sessionId]);
 
-  // ── Download handler (fetch+Blob avoids page navigation in WebView) ──────────
+  // ── Download handler (direct navigation is more reliable on mobile browsers) ──
 
   const handleDownload = async () => {
     if (!downloadToken || isDownloading) return;
     setIsDownloading(true);
     setDownloadError(null);
     try {
-      const res = await fetch(`/api/download/${encodeURIComponent(downloadToken)}`);
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        setDownloadError(data.error ?? 'Download failed. Please try again.');
-        return;
+      const downloadPath = `/api/download/${encodeURIComponent(downloadToken)}`;
+
+      // Use direct navigation so mobile browsers/WebViews can handle file downloads natively.
+      const popup = window.open(downloadPath, '_blank', 'noopener,noreferrer');
+      if (!popup) {
+        window.location.assign(downloadPath);
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'crochet-canvas-pattern.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setDownloadError('Download failed. Please try again.');
     } finally {
-      setIsDownloading(false);
+      setTimeout(() => setIsDownloading(false), 1000);
     }
   };
 
@@ -199,6 +191,19 @@ function SuccessContent() {
               {downloadError && (
                 <p className="mt-3 text-sm text-[#9f3a2a]">{downloadError}</p>
               )}
+              <p className="mt-3 text-xs text-[color:var(--text-secondary)]">
+                If the download does not start automatically, tap
+                {' '}
+                <a
+                  href={`/api/download/${encodeURIComponent(downloadToken)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[color:var(--brand-primary)] underline"
+                >
+                  open download link
+                </a>
+                .
+              </p>
               <p className="mt-4 text-xs text-[color:var(--text-secondary)]">
                 Your download link is valid for 24 hours.
               </p>

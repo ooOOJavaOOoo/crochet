@@ -1041,9 +1041,9 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="preview-frame relative h-[460px] rounded-[1.5rem] p-3 !overflow-auto">
+                  <div className="preview-frame relative h-[min(65vh,460px)] rounded-[1.5rem] p-3">
                     <div
-                      className="h-full w-full rounded-[1rem] bg-white/70 p-2 [&>svg]:mx-auto [&>svg]:block [&>svg]:h-auto [&>svg]:max-w-none [&>svg]:w-auto"
+                      className="flex h-full w-full items-center justify-center rounded-[1rem] bg-white/70 p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:max-h-full [&>svg]:max-w-full [&>svg]:w-auto"
                       dangerouslySetInnerHTML={{ __html: state.previewData.previewSvg }}
                     />
                     {state.previewData.isWatermarked && (
