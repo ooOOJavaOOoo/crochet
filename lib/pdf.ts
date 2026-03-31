@@ -175,6 +175,10 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
       mode: 'width',
       value: chartRasterWidth,
     },
+    font: {
+      fontDirs: ['/fonts'],
+      loadSystemFonts: true,
+    },
   }).render().asPng();
   const chartPng = await doc.embedPng(chartPngBuffer);
 
@@ -713,6 +717,10 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
       fitTo: {
         mode: 'width',
         value: fullChartRasterWidth,
+      },
+      font: {
+        fontDirs: ['/fonts'],
+        loadSystemFonts: true,
       },
     }).render().asPng();
     const fullChartPng = await doc.embedPng(fullChartPngBuffer);

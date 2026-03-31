@@ -225,8 +225,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
   }
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" ` +
-      `width="${svgWidth}" height="${svgHeight}" style="overflow: visible;">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-15} ${-15} ${svgWidth + 30} ${svgHeight + 30}" ` +
+      `width="${svgWidth}" height="${svgHeight}">`,
     ...parts,
     `</svg>`,
   ].join('\n');
