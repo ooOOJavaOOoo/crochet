@@ -31,11 +31,14 @@ See `.env.local.example` for a full list. At minimum you need:
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `JWT_SECRET` | Random 256-bit secret for one-time download tokens |
 | `CRON_SECRET` | Bearer token that authorises the cleanup cron job |
+| `APP_URL` | Canonical public app URL used for Stripe redirects and email links (required in production) |
+| `APP_URL_ALLOWLIST` | Optional comma-separated allowlist of acceptable APP_URL values |
 | `NEXT_PUBLIC_APP_URL` | Publicly reachable base URL, e.g. `https://yourapp.vercel.app` |
 | `AMAZON_ASSOCIATE_TAG` | Amazon Associates tracking ID used in all shopping links, e.g. `yourstore-20` |
 | `KV_REST_API_URL` | Vercel KV REST endpoint |
 | `KV_REST_API_TOKEN` | Vercel KV REST token |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob read/write token |
+| `BLOB_HOST_ALLOWLIST` | Optional comma-separated blob host allowlist for secure downloads (default: `blob.vercel-storage.com`) |
 
 ### Vercel deployment
 

@@ -2,6 +2,9 @@ import { z } from 'zod';
 import Stripe from 'stripe';
 import { kv } from '@vercel/kv';
 import type { StoredCheckout, StoredPattern } from '@/lib/types';
+import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
+import { getRequiredAppUrl } from '@/lib/appUrl';
+import { buildSetCookie } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -20,32 +23,12 @@ const schema = z.object({
   patternId: z.string().min(1),
 });
 
-function resolveAppUrl(request: Request): string {
-  const appUrlOverride = process.env.APP_URL;
-  if (appUrlOverride) {
-    return appUrlOverride.replace(/\/$/, '');
-  }
-
-  // Prefer the incoming request origin so Stripe returns users to the same host.
-  const requestOrigin = new URL(request.url).origin;
-  if (requestOrigin) {
-    return requestOrigin;
-  }
-
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) {
-    return `https://${vercelUrl}`;
-  }
-
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/$/, '');
-  }
-
-  return requestOrigin;
-}
-
 export async function POST(request: Request): Promise<Response> {
+  const rateLimit = await checkRateLimit(request, 'checkout');
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit.retryAfterSeconds);
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -71,7 +54,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Pattern not found' }, { status: 404 });
   }
 
-  const appUrl = resolveAppUrl(request);
+  let appUrl: string;
+  try {
+    appUrl = getRequiredAppUrl();
+  } catch (err) {
+    console.error('[POST /api/checkout] APP_URL misconfiguration', err);
+    return Response.json({ error: 'Server misconfiguration' }, { status: 500 });
+  }
 
   let session: Stripe.Checkout.Session;
   try {
@@ -109,7 +98,20 @@ export async function POST(request: Request): Promise<Response> {
     createdAt: new Date().toISOString(),
   };
 
-  await kv.set(`checkout:${session.id}`, storedCheckout, { ex: 7200 }); // 2 hours
+  const checkoutProof = crypto.randomUUID();
 
-  return Response.json({ checkoutUrl: session.url, sessionId: session.id }, { status: 200 });
+  await Promise.all([
+    kv.set(`checkout:${session.id}`, storedCheckout, { ex: 7200 }), // 2 hours
+    kv.set(`checkout-proof:${session.id}`, checkoutProof, { ex: 7200 }),
+  ]);
+
+  return Response.json(
+    { checkoutUrl: session.url, sessionId: session.id },
+    {
+      status: 200,
+      headers: {
+        'set-cookie': buildSetCookie('checkout_proof', checkoutProof, 7200),
+      },
+    },
+  );
 }

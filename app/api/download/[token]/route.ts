@@ -1,17 +1,46 @@
 import { jwtVerify } from 'jose';
 import { kv } from '@vercel/kv';
 import type { StoredDownloadToken, StoredPattern } from '@/lib/types';
+import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
+
+function isAllowedBlobUrl(rawUrl: string): boolean {
+  const allowlist = (process.env.BLOB_HOST_ALLOWLIST ?? 'blob.vercel-storage.com')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    return allowlist.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`));
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> },
 ): Promise<Response> {
+  const rateLimit = await checkRateLimit(_request, 'download');
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit.retryAfterSeconds);
+  }
+
   const { token } = await params;
 
   // 1. Verify JWT signature and expiry
-  const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return Response.json({ error: 'Server misconfiguration' }, { status: 500 });
+  }
+
+  const secret = new TextEncoder().encode(jwtSecret);
 
   let sub: string | undefined;
   let jti: string | undefined;
@@ -36,9 +65,16 @@ export async function GET(
     return Response.json({ error: 'Malformed token claims' }, { status: 403 });
   }
 
+  const lockKey = `download-lock:${jti}`;
+  const lockResult = await kv.set(lockKey, '1', { nx: true, ex: 20 });
+  if (lockResult !== 'OK') {
+    return Response.json({ error: 'Download already in progress' }, { status: 429 });
+  }
+
   // 3. Fetch one-time token record
   const tokenRecord = await kv.get<StoredDownloadToken>(`download:${jti}`);
   if (!tokenRecord) {
+    await kv.del(lockKey);
     return Response.json({ error: 'Token not found' }, { status: 403 });
   }
 
@@ -46,13 +82,20 @@ export async function GET(
   const MAX_DOWNLOADS = 3;
   const currentCount = tokenRecord.downloadCount ?? (tokenRecord.used ? MAX_DOWNLOADS : 0);
   if (currentCount >= MAX_DOWNLOADS) {
+    await kv.del(lockKey);
     return Response.json({ error: 'Download limit reached' }, { status: 403 });
   }
 
   // 5. Fetch pattern
   const storedPattern = await kv.get<StoredPattern>(`pattern:${sub}`);
   if (!storedPattern) {
+    await kv.del(lockKey);
     return Response.json({ error: 'Pattern not found' }, { status: 404 });
+  }
+
+  if (!isAllowedBlobUrl(storedPattern.pdfBlobUrl)) {
+    await kv.del(lockKey);
+    return Response.json({ error: 'Invalid file URL' }, { status: 500 });
   }
 
   // 6. Increment download count BEFORE streaming (prevents parallel double-downloads)
@@ -67,12 +110,13 @@ export async function GET(
     }
   } catch (err) {
     console.error('[GET /api/download] Blob fetch failed', err);
-    // Best-effort: restore count so user can retry
-    await kv.set(`download:${jti}`, { ...tokenRecord, used: false, downloadCount: currentCount }, { ex: 86400 });
+    await kv.del(lockKey);
     return Response.json({ error: 'Could not retrieve PDF' }, { status: 502 });
   }
 
   const patternId = storedPattern.patternId;
+
+  await kv.del(lockKey);
 
   return new Response(blobResponse.body, {
     headers: {

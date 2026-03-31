@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildCrochetPrompt } from '@/lib/prompt';
 import { GEMINI_TEXT_MODEL, getGoogleApiKey } from '@/lib/models';
+import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 
 // Gemini 2.5 Flash (text input) pricing in USD per 1M tokens.
 // Keep these values aligned with the official Google AI pricing page.
@@ -9,6 +10,11 @@ const GEMINI_FLASH_INPUT_PRICE_PER_TOKEN = GEMINI_FLASH_INPUT_PRICE_PER_MILLION 
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = await checkRateLimit(request, 'tokens');
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+
     const body = await request.json();
     const {
       gridSize,
@@ -30,6 +36,13 @@ export async function POST(request: Request) {
     const promptText = image
       ? `${basePromptText}\n\nImage (base64 data URI): ${image}`
       : basePromptText;
+
+    if (promptText.length > 100_000) {
+      return new Response(JSON.stringify({ error: 'Request payload too large.' }), {
+        status: 413,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
 
     const apiKey = getGoogleApiKey();
     if (!apiKey) {

@@ -222,9 +222,6 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(patternResponse satisfies PatternData, { status: 200 });
   } catch (err) {
     console.error('[POST /api/pattern] generation failed', err);
-    return Response.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
-      { status: 500 },
-    );
+    return Response.json({ error: 'Pattern generation failed' }, { status: 500 });
   }
 }

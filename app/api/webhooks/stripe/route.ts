@@ -3,34 +3,10 @@ import { SignJWT } from 'jose';
 import { kv } from '@vercel/kv';
 import { Resend } from 'resend';
 import type { StoredCheckout, StoredDownloadToken } from '@/lib/types';
+import { getRequiredAppUrl } from '@/lib/appUrl';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function resolveAppUrl(request: Request): string {
-  const appUrlOverride = process.env.APP_URL;
-  if (appUrlOverride) {
-    return appUrlOverride.replace(/\/$/, '');
-  }
-
-  // Prefer the incoming request origin so emailed links match the active host.
-  const requestOrigin = new URL(request.url).origin;
-  if (requestOrigin) {
-    return requestOrigin;
-  }
-
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) {
-    return `https://${vercelUrl}`;
-  }
-
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/$/, '');
-  }
-
-  return requestOrigin;
-}
 
 function getStripeClient(): Stripe | null {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -90,6 +66,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+  if (session.payment_status !== 'paid') {
+    return Response.json({ received: true });
+  }
+
   const patternId = session.metadata?.patternId;
 
   if (!patternId) {
@@ -99,51 +79,72 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ received: true });
   }
 
-  // Idempotency check — skip if already processed
-  const existing = await kv.get<StoredCheckout>(`checkout:${session.id}`);
-  if (existing?.status === 'complete') {
+  const lockKey = `checkout-finalize-lock:${session.id}`;
+  const lockResult = await kv.set(lockKey, '1', { nx: true, ex: 30 });
+  if (lockResult !== 'OK') {
+    const existingWhileLocked = await kv.get<StoredCheckout>(`checkout:${session.id}`);
+    if (existingWhileLocked?.status === 'complete') {
+      return Response.json({ received: true });
+    }
     return Response.json({ received: true });
   }
 
-  // Generate one-time download JWT
-  const secret = new TextEncoder().encode(jwtSecret);
-  const jti = crypto.randomUUID();
+  let token: string;
 
-  const token = await new SignJWT({ sub: patternId, pur: 'download' })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setJti(jti)
-    .setIssuedAt()
-    .setExpirationTime('24h')
-    .sign(secret);
+  try {
+    const existing = await kv.get<StoredCheckout>(`checkout:${session.id}`);
+    if (existing?.status === 'complete') {
+      return Response.json({ received: true });
+    }
 
-  const issuedAt = new Date().toISOString();
+    // Generate one-time download JWT
+    const secret = new TextEncoder().encode(jwtSecret);
+    const jti = crypto.randomUUID();
 
-  const downloadTokenRecord: StoredDownloadToken = {
-    patternId,
-    jti,
-    issuedAt,
-    used: false,
-  };
+    token = await new SignJWT({ sub: patternId, pur: 'download' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setJti(jti)
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(secret);
 
-  const updatedCheckout: StoredCheckout = {
-    patternId,
-    stripeSessionId: session.id,
-    status: 'complete',
-    downloadToken: token,
-    createdAt: existing?.createdAt ?? issuedAt,
-  };
+    const issuedAt = new Date().toISOString();
 
-  // Persist both records
-  await Promise.all([
-    kv.set(`download:${jti}`, downloadTokenRecord, { ex: 86400 }),          // 24 hours
-    kv.set(`checkout:${session.id}`, updatedCheckout, { ex: 86400 }),       // 24 hours
-  ]);
+    const downloadTokenRecord: StoredDownloadToken = {
+      patternId,
+      jti,
+      issuedAt,
+      used: false,
+    };
+
+    const updatedCheckout: StoredCheckout = {
+      patternId,
+      stripeSessionId: session.id,
+      status: 'complete',
+      downloadToken: token,
+      createdAt: existing?.createdAt ?? issuedAt,
+    };
+
+    // Persist both records
+    await Promise.all([
+      kv.set(`download:${jti}`, downloadTokenRecord, { ex: 86400 }),          // 24 hours
+      kv.set(`checkout:${session.id}`, updatedCheckout, { ex: 86400 }),       // 24 hours
+    ]);
+  } finally {
+    await kv.del(lockKey);
+  }
 
   // Send download link to customer email (non-fatal)
   const customerEmail = session.customer_details?.email;
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.FROM_EMAIL;
-  const appUrl = resolveAppUrl(request);
+  let appUrl: string;
+  try {
+    appUrl = getRequiredAppUrl();
+  } catch (err) {
+    console.error('[stripe webhook] APP_URL misconfiguration', err);
+    return Response.json({ received: true });
+  }
 
   if (customerEmail && resendApiKey && fromEmail) {
     const downloadUrl = `${appUrl}/api/download/${token}`;

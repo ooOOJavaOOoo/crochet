@@ -22,6 +22,16 @@ import { matchColors, type YarnBrand } from '@/lib/prompts/colorMatcher';
 import { recommendSize } from '@/lib/prompts/sizeRecommender';
 import { generateTitle } from '@/lib/prompts/titleGenerator';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
+import { z } from 'zod';
+
+const schema = z.object({
+  hexColors: z.array(z.string().regex(/^#[0-9A-Fa-f]{6}$/)).min(1).max(30),
+  aspectRatio: z.number().finite().positive().max(10),
+  yarnBrand: z.string().max(50).optional(),
+  detectedSubject: z.string().max(120).optional(),
+  requestedUse: z.string().max(120).optional(),
+  imageDescription: z.string().max(500).optional(),
+});
 
 export async function POST(request: Request) {
   const rateLimit = await checkRateLimit(request, 'recommend');
@@ -37,16 +47,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (
-    !body ||
-    typeof body !== 'object' ||
-    !Array.isArray((body as Record<string, unknown>).hexColors) ||
-    typeof (body as Record<string, unknown>).aspectRatio !== 'number'
-  ) {
-    return NextResponse.json(
-      { error: 'hexColors (string[]) and aspectRatio (number) are required' },
-      { status: 400 }
-    );
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
   const {
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
     detectedSubject,
     requestedUse,
     imageDescription,
-  } = body as {
+  } = parsed.data as {
     hexColors: string[];
     aspectRatio: number;
     yarnBrand?: YarnBrand;

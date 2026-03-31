@@ -75,6 +75,12 @@ function SuccessContent() {
             return;
           }
 
+          if (res.status === 401 || res.status === 403) {
+            setStatus('error');
+            setErrorMessage('Checkout verification expired. Please restart checkout from the preview page.');
+            return;
+          }
+
           if (res.status >= 500) {
             setStatus('error');
             setErrorMessage('Server error while confirming payment. Please refresh in a moment.');

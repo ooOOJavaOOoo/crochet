@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { SignJWT } from 'jose';
 import type { ShoppingListItem, StoredCheckout, StoredDownloadToken, StoredPattern } from '@/lib/types';
 import { buildAmazonShoppingList } from '@/lib/shopping';
+import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
+import { buildClearCookie, parseCookies } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -68,6 +70,11 @@ async function getShoppingList(patternId: string): Promise<ShoppingListItem[] | 
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const rateLimit = await checkRateLimit(request, 'checkout-status');
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit.retryAfterSeconds);
+  }
+
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('session_id');
 
@@ -75,16 +82,32 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: 'Missing session_id query parameter' }, { status: 400 });
   }
 
+  const cookies = parseCookies(request.headers.get('cookie'));
+  const checkoutProof = cookies.checkout_proof;
+  if (!checkoutProof) {
+    return Response.json({ error: 'Missing checkout proof' }, { status: 403 });
+  }
+
+  const expectedProof = await kv.get<string>(`checkout-proof:${sessionId}`);
+  if (!expectedProof || expectedProof !== checkoutProof) {
+    return Response.json({ error: 'Invalid checkout proof' }, { status: 403 });
+  }
+
   const checkoutKey = `checkout:${sessionId}`;
   const checkout = await kv.get<StoredCheckout>(checkoutKey);
 
   if (checkout?.status === 'complete') {
     const shoppingList = await getShoppingList(checkout.patternId);
+    await kv.del(`checkout-proof:${sessionId}`);
 
     return Response.json({
       status: 'complete',
       downloadToken: checkout.downloadToken,
       shoppingList,
+    }, {
+      headers: {
+        'set-cookie': buildClearCookie('checkout_proof'),
+      },
     });
   }
 
@@ -95,13 +118,9 @@ export async function GET(request: Request): Promise<Response> {
   const stripe = getStripeClient();
   const jwtSecret = process.env.JWT_SECRET;
 
-  // If Stripe/JWT are unavailable, fall back to existing pending record only.
+  // If Stripe/JWT are unavailable, return explicit error so the client can recover.
   if (!stripe || !jwtSecret) {
-    if (checkout) {
-      return Response.json({ status: 'pending', downloadToken: null });
-    }
-
-    return Response.json({ error: 'Checkout session not found' }, { status: 404 });
+    return Response.json({ error: 'Server misconfiguration' }, { status: 503 });
   }
 
   let stripeSession: Stripe.Checkout.Session;
@@ -109,10 +128,7 @@ export async function GET(request: Request): Promise<Response> {
     stripeSession = await stripe.checkout.sessions.retrieve(sessionId);
   } catch (err) {
     console.error('[GET /api/checkout/status] Stripe session lookup failed', err);
-    if (checkout) {
-      return Response.json({ status: 'pending', downloadToken: null });
-    }
-    return Response.json({ error: 'Checkout session not found' }, { status: 404 });
+    return Response.json({ error: 'Temporary payment lookup failure' }, { status: 502 });
   }
 
   if (stripeSession.status === 'expired') {
@@ -135,23 +151,53 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ status: 'pending', downloadToken: null });
   }
 
-  const patternId = checkout?.patternId ?? stripeSession.metadata?.patternId;
-  if (!patternId) {
-    return Response.json({ error: 'Missing pattern metadata on checkout session' }, { status: 500 });
+  const lockKey = `checkout-finalize-lock:${sessionId}`;
+  const lockResult = await kv.set(lockKey, '1', { nx: true, ex: 30 });
+  if (lockResult !== 'OK') {
+    const completed = await kv.get<StoredCheckout>(checkoutKey);
+    if (completed?.status === 'complete') {
+      const shoppingList = await getShoppingList(completed.patternId);
+      await kv.del(`checkout-proof:${sessionId}`);
+      return Response.json({
+        status: 'complete',
+        downloadToken: completed.downloadToken,
+        shoppingList,
+      }, {
+        headers: {
+          'set-cookie': buildClearCookie('checkout_proof'),
+        },
+      });
+    }
+
+    return Response.json({ status: 'pending', downloadToken: null });
   }
 
-  const finalized = await finalizeCheckout(
-    sessionId,
-    patternId,
-    checkout?.createdAt ?? new Date().toISOString(),
-    jwtSecret,
-  );
+  try {
+    const patternId = checkout?.patternId ?? stripeSession.metadata?.patternId;
+    if (!patternId) {
+      return Response.json({ error: 'Missing pattern metadata on checkout session' }, { status: 500 });
+    }
 
-  const shoppingList = await getShoppingList(patternId);
+    const finalized = await finalizeCheckout(
+      sessionId,
+      patternId,
+      checkout?.createdAt ?? new Date().toISOString(),
+      jwtSecret,
+    );
 
-  return Response.json({
-    status: finalized.status,
-    downloadToken: finalized.downloadToken,
-    shoppingList,
-  });
+    const shoppingList = await getShoppingList(patternId);
+    await kv.del(`checkout-proof:${sessionId}`);
+
+    return Response.json({
+      status: finalized.status,
+      downloadToken: finalized.downloadToken,
+      shoppingList,
+    }, {
+      headers: {
+        'set-cookie': buildClearCookie('checkout_proof'),
+      },
+    });
+  } finally {
+    await kv.del(lockKey);
+  }
 }

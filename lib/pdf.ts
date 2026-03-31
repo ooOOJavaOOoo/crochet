@@ -168,7 +168,8 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   // Pre-render chart SVG to PNG once. A minimum raster width keeps labels and cells
   // crisp even for small patterns that are scaled up on the final chart page.
   const sourceChartWidth = getSvgViewBoxWidth(chartSvg) ?? pattern.dimensions.width * 8;
-  const chartRasterWidth = Math.max(2200, Math.round(sourceChartWidth));
+  // Keep preview sharp while capping memory use on serverless runtimes.
+  const chartRasterWidth = Math.min(1800, Math.max(1200, Math.round(sourceChartWidth * 1.2)));
   const chartPngBuffer = new Resvg(chartSvg, {
     fitTo: {
       mode: 'width',
@@ -661,112 +662,84 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   }
 
   // ---------------------------------------------------------------------------
-  // FINAL PAGES — Tiled Stitch Chart (global row/column axes)
+  // FINAL PAGE — Full Stitch Chart (single page with global row/column axes)
   // ---------------------------------------------------------------------------
   {
-    const TOTAL_ROWS = pattern.stitchGrid.length;
-    const TOTAL_COLS = pattern.stitchGrid[0]?.length ?? 0;
+    const axisChartSvg = renderStitchChart({
+      stitchGrid: pattern.stitchGrid,
+      palette: pattern.palette,
+      preview: false,
+      showLegend: false,
+      rowLabelOffset: 0,
+      colLabelOffset: 0,
+    });
 
-    // Keep each tile readable on A4 and ensure every stitch maps to a unique
-    // global row/column coordinate with explicit axis labels.
-    const TILE_ROWS = 90;
-    const TILE_COLS = 70;
+    const page = newPage();
+    let y = PAGE_HEIGHT - MARGIN;
 
-    const rowStarts: number[] = [];
-    const colStarts: number[] = [];
+    page.drawText('Full Stitch Chart', {
+      x: MARGIN,
+      y,
+      size: 16,
+      font: helveticaBold,
+      color: black,
+    });
+    y -= 20;
 
-    for (let rowStart = 0; rowStart < TOTAL_ROWS; rowStart += TILE_ROWS) {
-      rowStarts.push(rowStart);
-    }
-    for (let colStart = 0; colStart < TOTAL_COLS; colStart += TILE_COLS) {
-      colStarts.push(colStart);
-    }
+    page.drawText(
+      `Columns 1-${pattern.dimensions.width} | Rows 1-${pattern.dimensions.height} (axis labels included)`,
+      {
+        x: MARGIN,
+        y,
+        size: 9,
+        font: helvetica,
+        color: gray,
+      },
+    );
+    y -= 14;
 
-    const totalTiles = rowStarts.length * colStarts.length;
-    let tileIndex = 0;
+    const maxW = CONTENT_WIDTH;
+    const maxH = y - MARGIN - 20;
 
-    for (const rowStart of rowStarts) {
-      for (const colStart of colStarts) {
-        tileIndex += 1;
+    // Render the full chart at high resolution so PDF zoom remains readable.
+    const sourceAxisWidth = getSvgViewBoxWidth(axisChartSvg) ?? pattern.dimensions.width * 8;
+    const chartWidthAt300Dpi = Math.ceil((maxW / 72) * 300);
+    const fullChartRasterWidth = Math.min(
+      7200,
+      Math.max(2600, Math.round(Math.max(sourceAxisWidth * 2.6, chartWidthAt300Dpi * 2.4))),
+    );
 
-        const rowEndExclusive = Math.min(rowStart + TILE_ROWS, TOTAL_ROWS);
-        const colEndExclusive = Math.min(colStart + TILE_COLS, TOTAL_COLS);
+    const fullChartPngBuffer = new Resvg(axisChartSvg, {
+      fitTo: {
+        mode: 'width',
+        value: fullChartRasterWidth,
+      },
+    }).render().asPng();
+    const fullChartPng = await doc.embedPng(fullChartPngBuffer);
 
-        const tileGrid = pattern.stitchGrid
-          .slice(rowStart, rowEndExclusive)
-          .map((row) => row.slice(colStart, colEndExclusive));
+    const scale = Math.min(maxW / fullChartPng.width, maxH / fullChartPng.height, 1);
+    const drawW = fullChartPng.width * scale;
+    const drawH = fullChartPng.height * scale;
+    const chartX = MARGIN + (maxW - drawW) / 2;
+    const chartY = y - drawH;
 
-        const tileSvg = renderStitchChart({
-          stitchGrid: tileGrid,
-          palette: pattern.palette,
-          preview: false,
-          showLegend: false,
-          rowLabelOffset: rowStart,
-          colLabelOffset: colStart,
-        });
+    page.drawImage(fullChartPng, {
+      x: chartX,
+      y: chartY,
+      width: drawW,
+      height: drawH,
+    });
 
-        const sourceTileWidth = getSvgViewBoxWidth(tileSvg) ?? Math.max(800, tileGrid[0]?.length ?? 0);
-        // Oversample chart tiles heavily so PDF viewer zoom remains crisp.
-        const tileRasterWidth = Math.max(6000, Math.round(sourceTileWidth * 10));
-        const tilePngBuffer = new Resvg(tileSvg, {
-          fitTo: {
-            mode: 'width',
-            value: tileRasterWidth,
-          },
-        }).render().asPng();
-        const tilePng = await doc.embedPng(tilePngBuffer);
+    page.drawRectangle({
+      x: chartX,
+      y: chartY,
+      width: drawW,
+      height: drawH,
+      borderColor: lightGray,
+      borderWidth: 0.75,
+    });
 
-        const page = newPage();
-        let y = PAGE_HEIGHT - MARGIN;
-
-        page.drawText(`Stitch Chart Tile ${tileIndex} of ${totalTiles}`, {
-          x: MARGIN,
-          y,
-          size: 16,
-          font: helveticaBold,
-          color: black,
-        });
-        y -= 20;
-
-        page.drawText(
-          `Columns ${colStart + 1}-${colEndExclusive} | Rows ${rowStart + 1}-${rowEndExclusive}`,
-          {
-            x: MARGIN,
-            y,
-            size: 9,
-            font: helvetica,
-            color: gray,
-          },
-        );
-        y -= 14;
-
-        const maxW = CONTENT_WIDTH;
-        const maxH = y - MARGIN - 20;
-        const scale = Math.min(maxW / tilePng.width, maxH / tilePng.height, 1);
-        const drawW = tilePng.width * scale;
-        const drawH = tilePng.height * scale;
-        const chartX = MARGIN + (maxW - drawW) / 2;
-        const chartY = y - drawH;
-
-        page.drawImage(tilePng, {
-          x: chartX,
-          y: chartY,
-          width: drawW,
-          height: drawH,
-        });
-
-        page.drawRectangle({
-          x: chartX,
-          y: chartY,
-          width: drawW,
-          height: drawH,
-          borderColor: lightGray,
-          borderWidth: 0.75,
-        });
-
-        drawFooter(page);
-      }
-    }
+    drawFooter(page);
   }
 
   return Buffer.from(await doc.save());

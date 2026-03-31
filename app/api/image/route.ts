@@ -7,6 +7,13 @@ import {
 } from '@/lib/models';
 import { ensureGoogleCredentialsFile } from '@/lib/googleCredentials.node';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
+import { z } from 'zod';
+
+const schema = z.object({
+  prompt: z.string().max(1000).optional(),
+  aspectRatio: z.union([z.string().max(20), z.number().positive().max(10)]).optional(),
+  sourceImage: z.string().max(15_000_000).optional(),
+});
 
 type ImagenAspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
 
@@ -54,7 +61,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { prompt, aspectRatio, sourceImage } = body;
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: parsed.error.issues }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    const { prompt, aspectRatio, sourceImage } = parsed.data;
     const normalizedAspectRatio = normalizeAspectRatio(aspectRatio);
     const promptText =
       typeof prompt === 'string' && prompt.trim().length > 0 ? prompt.trim() : DEFAULT_IMAGE_PROMPT;

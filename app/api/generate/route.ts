@@ -2,6 +2,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { buildCrochetPrompt } from '@/lib/prompt';
 import { GEMINI_TEXT_MODEL, getGoogleApiKey } from '@/lib/models';
+import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 
 /**
  * @deprecated Legacy free-form text generation route.
@@ -10,6 +11,11 @@ import { GEMINI_TEXT_MODEL, getGoogleApiKey } from '@/lib/models';
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = await checkRateLimit(request, 'generate');
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+
     const body = await request.json();
     const {
       image,
@@ -39,6 +45,13 @@ export async function POST(request: Request) {
     });
 
     const promptText = image ? `${prompt}\n\nImage (base64 data URI): ${image}` : prompt;
+
+    if (promptText.length > 100_000) {
+      return new Response(JSON.stringify({ error: 'Request payload too large.' }), {
+        status: 413,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
 
     const result = await generateText({
       model: google(GEMINI_TEXT_MODEL),
