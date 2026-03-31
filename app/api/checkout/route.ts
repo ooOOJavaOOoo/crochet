@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { kv } from '@vercel/kv';
 import type { StoredCheckout, StoredPattern } from '@/lib/types';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
-import { getRequiredAppUrl } from '@/lib/appUrl';
+import { getAppUrlFromRequest, getRequiredAppUrl } from '@/lib/appUrl';
 import { buildSetCookie } from '@/lib/http';
 
 export const runtime = 'nodejs';
@@ -58,8 +58,14 @@ export async function POST(request: Request): Promise<Response> {
   try {
     appUrl = getRequiredAppUrl();
   } catch (err) {
-    console.error('[POST /api/checkout] APP_URL misconfiguration', err);
-    return Response.json({ error: 'Server misconfiguration' }, { status: 500 });
+    const derivedAppUrl = getAppUrlFromRequest(request);
+    if (!derivedAppUrl) {
+      console.error('[POST /api/checkout] APP_URL misconfiguration', err);
+      return Response.json({ error: 'Server misconfiguration' }, { status: 500 });
+    }
+
+    console.warn('[POST /api/checkout] APP_URL missing, using request-derived origin');
+    appUrl = derivedAppUrl;
   }
 
   let session: Stripe.Checkout.Session;

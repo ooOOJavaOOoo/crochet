@@ -140,13 +140,19 @@ export function renderStitchChart(opts: SvgChartOptions): string {
     : 0;
   const legendY     = chartY + chartHeight + (showAxisLabels ? LABEL_BAND_Y : 0);
   const svgWidth    = chartX + chartWidth + chartRightPad;
-  const svgHeight   = showLegend ? legendY + legendHeight : legendY;
+  // Ensure top and bottom axis labels have sufficient breathing room (12px extra padding)
+  const svgHeightBase = showLegend ? legendY + legendHeight : legendY;
+  const svgHeight   = showAxisLabels ? svgHeightBase + 12 : svgHeightBase;
 
   const parts: string[] = [];
 
   if (showAxisLabels) {
     const colTickStep = niceTickStep(Math.max(Math.ceil(cols / 20), 1));
     const rowTickStep = niceTickStep(Math.max(Math.ceil(renderRows / 20), 1));
+
+    // Axis label positioning with extra defensive padding to ensure visibility
+    const topLabelY = chartY - 10;      // Extra 3px above the original -7 position
+    const bottomLabelY = chartY + chartHeight + 16; // Extra 2px below the original +14 position
 
     parts.push(
       `<rect x="${chartX}" y="${chartY}" width="${chartWidth}" height="${chartHeight}" fill="#ffffff" stroke="#d9d9d9" stroke-width="1"/>`,
@@ -158,8 +164,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       const x = chartX + col * CELL_SIZE + CELL_SIZE / 2;
 
       parts.push(
-        `<text x="${x}" y="${chartY - 7}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="middle">${label}</text>`,
-        `<text x="${x}" y="${chartY + chartHeight + 14}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="middle">${label}</text>`,
+        `<text x="${x}" y="${topLabelY}" font-family="monospace" font-size="10" font-weight="bold" fill="#2c3e50" text-anchor="middle">${label}</text>`,
+        `<text x="${x}" y="${bottomLabelY}" font-family="monospace" font-size="10" font-weight="bold" fill="#2c3e50" text-anchor="middle">${label}</text>`,
       );
     }
 
@@ -169,8 +175,8 @@ export function renderStitchChart(opts: SvgChartOptions): string {
       const y = chartY + (renderRows - 1 - row) * CELL_SIZE + CELL_SIZE / 2 + 3;
 
       parts.push(
-        `<text x="${chartX - 6}" y="${y}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="end">${label}</text>`,
-        `<text x="${chartX + chartWidth + 6}" y="${y}" font-family="monospace" font-size="9" fill="#4b5563" text-anchor="start">${label}</text>`,
+        `<text x="${chartX - 8}" y="${y}" font-family="monospace" font-size="10" font-weight="bold" fill="#2c3e50" text-anchor="end">${label}</text>`,
+        `<text x="${chartX + chartWidth + 8}" y="${y}" font-family="monospace" font-size="10" font-weight="bold" fill="#2c3e50" text-anchor="start">${label}</text>`,
       );
     }
   }

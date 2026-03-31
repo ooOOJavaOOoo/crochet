@@ -3,7 +3,7 @@ import { SignJWT } from 'jose';
 import { kv } from '@vercel/kv';
 import { Resend } from 'resend';
 import type { StoredCheckout, StoredDownloadToken } from '@/lib/types';
-import { getRequiredAppUrl } from '@/lib/appUrl';
+import { getAppUrlFromRequest, getRequiredAppUrl } from '@/lib/appUrl';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -142,8 +142,14 @@ export async function POST(request: Request): Promise<Response> {
   try {
     appUrl = getRequiredAppUrl();
   } catch (err) {
-    console.error('[stripe webhook] APP_URL misconfiguration', err);
-    return Response.json({ received: true });
+    const derivedAppUrl = getAppUrlFromRequest(request);
+    if (!derivedAppUrl) {
+      console.error('[stripe webhook] APP_URL misconfiguration', err);
+      return Response.json({ received: true });
+    }
+
+    console.warn('[stripe webhook] APP_URL missing, using request-derived origin');
+    appUrl = derivedAppUrl;
   }
 
   if (customerEmail && resendApiKey && fromEmail) {
