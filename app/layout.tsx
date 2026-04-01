@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const DEFAULT_APP_URL = "https://crochetcanvas.com";
@@ -99,6 +100,7 @@ export default function RootLayout({
         className={`${plusJakartaSans.variable} ${fraunces.variable} ${spaceMono.variable} antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );

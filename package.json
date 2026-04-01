@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "verify:wolf": "node scripts/verify-wolf.mjs"
+    "verify:wolf": "node scripts/verify-wolf.mjs",
+    "test:pdf": "tsx scripts/test-pdf.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.43",
@@ -17,6 +18,7 @@
     "@google/generative-ai": "^0.24.1",
     "@resvg/resvg-js": "^2.6.2",
     "@upstash/ratelimit": "^2.0.8",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.3.1",
     "@vercel/kv": "^3.0.0",
     "ai": "^6.0.116",
@@ -44,6 +46,7 @@
     "eslint-config-next": "16.1.6",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }

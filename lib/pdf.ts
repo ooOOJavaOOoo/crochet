@@ -4,6 +4,7 @@ import type { PatternData, PaletteEntry } from './types';
 import { buildAmazonShoppingList } from './shopping';
 import { getYarnWeightConfig } from './yarnWeight';
 import { renderStitchChart } from './svg';
+import { getOutputTypeLabel } from './outputType';
 
 export interface PdfOptions {
   pattern: PatternData;
@@ -155,6 +156,7 @@ function getSvgViewBoxWidth(svg: string): number | null {
 
 export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   const { pattern, chartSvg } = opts;
+  const outputTypeLabel = getOutputTypeLabel(pattern.outputType ?? 'blanket', pattern.customOutputTypeLabel);
   const shoppingList = buildAmazonShoppingList(pattern);
 
   const doc = await PDFDocument.create();
@@ -245,8 +247,12 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
 
     page.drawText(
       pattern.stitchType === 'c2c'
-        ? `C2C (Corner-to-Corner) Crochet Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`
-        : `Tapestry Crochet Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`,
+        ? `C2C ${outputTypeLabel} Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`
+        : pattern.stitchType === 'knitting'
+        ? `${outputTypeLabel} Knitting Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`
+        : pattern.stitchType === 'cross-stitch'
+        ? `${outputTypeLabel} Cross-Stitch Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`
+        : `Tapestry ${outputTypeLabel} Pattern — ${getYarnWeightConfig(pattern.yarnWeight).label}`,
       {
         x: MARGIN,
         y,
@@ -259,7 +265,7 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     y -= 36;
 
     page.drawText(
-      `Blanket size: ${pattern.dimensions.width}W \u00d7 ${pattern.dimensions.height}H stitches`,
+      `${outputTypeLabel} size: ${pattern.dimensions.width}W \u00d7 ${pattern.dimensions.height}H stitches`,
       { x: MARGIN, y, size: 12, font: helvetica, color: black },
     );
     y -= 22;
@@ -277,6 +283,10 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     page.drawText(
       pattern.stitchType === 'c2c'
         ? `Gauge: ${getYarnWeightConfig(pattern.yarnWeight).c2cGaugeHint.split('. ')[1] ?? ''} Hook: ${pattern.hookSize}`
+        : pattern.stitchType === 'knitting'
+        ? `Gauge: ${getYarnWeightConfig(pattern.yarnWeight).knittingGaugeHint.split('. ')[1] ?? ''} Needle: ${pattern.hookSize}`
+        : pattern.stitchType === 'cross-stitch'
+        ? `${getYarnWeightConfig(pattern.yarnWeight).crossStitchGaugeHint} Fabric: ${pattern.hookSize}`
         : `Gauge: ${getYarnWeightConfig(pattern.yarnWeight).tapestryGaugeHint.split('. ')[1] ?? ''} Hook: ${pattern.hookSize}`,
       {
         x: MARGIN,
@@ -691,7 +701,19 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
     y -= 20;
 
     page.drawText(
-      `Columns 1-${pattern.dimensions.width} | Rows 1-${pattern.dimensions.height} (axis labels included)`,
+      `Columns are numbered left to right. Rows are numbered bottom to top.`,
+      {
+        x: MARGIN,
+        y,
+        size: 9,
+        font: helvetica,
+        color: gray,
+      },
+    );
+    y -= 14;
+
+    page.drawText(
+      `Chart range: columns 1-${pattern.dimensions.width} | rows 1-${pattern.dimensions.height}`,
       {
         x: MARGIN,
         y,

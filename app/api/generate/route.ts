@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     const {
       image,
       gridSize,
+      outputType,
       colorLimit = 'auto',
       yarnBrand = '',
       yarnColors = '',
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
 
     const prompt = buildCrochetPrompt({
       gridSize,
+      outputType,
       colorLimit,
       yarnBrand,
       yarnColors,

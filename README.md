@@ -7,6 +7,7 @@ Crochet Canvas is a webapp that converts images into tapestry crochet patterns u
 - Upload an image
 - Specify grid size, color limitations, yarn brand, and exact yarn colors (when using exact color mode; e.g., "Red Heart Super Saver, Cherry Red")
 - Generate crochet pattern with AI
+- Generate 3D amigurumi-style stuffed toy-animal concept images via `POST /api/image` (`stylePreset: "amigurumi-plush-3d"`)
 - Preview the pattern
 - Export as PDF
 

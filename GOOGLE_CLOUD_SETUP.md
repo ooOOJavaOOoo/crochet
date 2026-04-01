@@ -91,7 +91,7 @@ Once credentials are set up, test with:
 ```bash
 curl -X POST http://localhost:3000/api/image \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "a red crochet blanket", "aspectRatio": "1:1"}'
+   -d '{"prompt": "a fox toy with chunky yarn details", "aspectRatio": "1:1", "stylePreset": "amigurumi-plush-3d"}'
 ```
 
 Should return a base64-encoded image (not an error about credentials).

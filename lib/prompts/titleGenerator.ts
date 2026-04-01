@@ -33,6 +33,7 @@ export interface GenerateTitleInput {
   imageDescription?: string;
   colorNames: string[];
   subjectHint?: string;
+  outputTypeLabel?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +101,7 @@ function buildUserMessage(input: GenerateTitleInput): string {
 
   const lines = [
     `Color palette (${colorCount} color${colorCount !== 1 ? 's' : ''}): ${colorList}`,
+    input.outputTypeLabel ? `Intended output type: ${input.outputTypeLabel}` : null,
     input.subjectHint ? `Image subject: ${input.subjectHint}` : null,
     input.imageDescription ? `User description: ${input.imageDescription}` : null,
   ].filter(Boolean);
@@ -115,8 +117,9 @@ Generate a creative pattern title and subtitle. Return ONLY the JSON object — 
 
 function buildFallback(input: GenerateTitleInput): PatternTitleResult {
   const count = input.colorNames.length;
+  const outputLabel = input.outputTypeLabel?.trim() || 'Blanket';
   return {
-    title: 'Tapestry Crochet Blanket',
+    title: `Tapestry Crochet ${outputLabel}`,
     subtitle: `A tapestry crochet pattern in ${count} color${count !== 1 ? 's' : ''}`,
   };
 }

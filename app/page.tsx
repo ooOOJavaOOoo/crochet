@@ -2,11 +2,21 @@
 
 import Image from 'next/image';
 import { ChangeEvent, useEffect, useReducer } from 'react';
-import type { PatternData, RenderMode, StitchType, YarnWeight } from '@/lib/types';
+import type { OutputType, PatternData, RenderMode, StitchType, YarnWeight } from '@/lib/types';
+import { DEFAULT_OUTPUT_TYPE } from '@/lib/types';
 import AffiliateAdStrip from '@/app/components/AffiliateAdStrip';
-import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook } from '@/lib/yarnWeight';
+import StepIndicator from '@/app/components/StepIndicator';
+import ImageUploadSection from '@/app/components/ImageUploadSection';
+import SettingsForm from '@/app/components/SettingsForm';
+import PreviewBoard from '@/app/components/PreviewBoard';
+import FloatingSummary from '@/app/components/FloatingSummary';
+import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook, CROSS_STITCH_AIDA_OPTIONS } from '@/lib/yarnWeight';
+import { getOutputTypeLabel } from '@/lib/outputType';
 
 type Step = 'image' | 'settings' | 'generating' | 'preview' | 'buying';
+type ImageInputMode = 'upload' | 'ai-generate' | 'ai-edit';
+
+export type { Step, ImageInputMode, Action };
 
 interface PreviewData {
   patternId: string;
@@ -51,6 +61,21 @@ const YARN_BRANDS = [
   { value: 'caron', label: 'Caron' },
   { value: 'i-love-this-yarn', label: 'I Love this Yarn' },
   { value: 'yarn-bee', label: 'Yarn Bee (DK)' },
+];
+
+const OUTPUT_TYPE_OPTIONS: Array<{ value: OutputType; label: string }> = [
+  { value: 'blanket', label: 'Blanket' },
+  { value: 'beanie', label: 'Beanie' },
+  { value: 'scarf', label: 'Scarf' },
+  { value: 'amigurumi', label: 'Amigurumi' },
+  { value: 'top', label: 'Top' },
+  { value: 'sweater', label: 'Sweater' },
+  { value: 'shawl', label: 'Shawl' },
+  { value: 'hat', label: 'Hat' },
+  { value: 'bag', label: 'Bag' },
+  { value: 'pillow', label: 'Pillow' },
+  { value: 'wall-hanging', label: 'Wall Hanging' },
+  { value: 'other', label: 'Other (custom)' },
 ];
 
 const HERO_SWATCHES = [
@@ -166,10 +191,14 @@ const STUDIO_THEME_IMAGES = [
 
 interface State {
   step: Step;
+  imageInputMode: ImageInputMode;
   imageBase64: string | null;
+  aiImagePrompt: string;
   presetIndex: number;
   gridWidth: number;
   gridHeight: number;
+  outputType: OutputType;
+  customOutputTypeLabel: string;
   colorCount: number;
   renderMode: RenderMode;
   flattenBackgroundRegions: boolean;
@@ -184,14 +213,22 @@ interface State {
   loadingMessage: string | null;
   error: string | null;
   toast: string | null;
+  isAdvancedSettingsExpanded: boolean;
+  isFloatingSummaryDismissed: boolean;
+  highlightedAdjustmentSectionId: string | null;
+  highlightedAdjustmentExpiresAt: number | null;
 }
 
 type Action =
   | { type: 'SetStep'; step: Step }
+  | { type: 'SetImageInputMode'; imageInputMode: ImageInputMode }
   | { type: 'SetImageBase64'; imageBase64: string | null }
+  | { type: 'SetAiImagePrompt'; aiImagePrompt: string }
   | { type: 'SetPreset'; presetIndex: number; width: number; height: number }
   | { type: 'SetGridWidth'; gridWidth: number }
   | { type: 'SetGridHeight'; gridHeight: number }
+  | { type: 'SetOutputType'; outputType: OutputType }
+  | { type: 'SetCustomOutputTypeLabel'; customOutputTypeLabel: string }
   | { type: 'SetColorCount'; colorCount: number }
   | { type: 'SetRenderMode'; renderMode: RenderMode }
   | { type: 'SetFlattenBackgroundRegions'; flattenBackgroundRegions: boolean }
@@ -206,16 +243,26 @@ type Action =
   | { type: 'SetLoadingMessage'; loadingMessage: string | null }
   | { type: 'SetError'; error: string | null }
   | { type: 'SetToast'; toast: string | null }
+  | { type: 'SetAdvancedSettingsExpanded'; expanded: boolean }
+  | { type: 'SetFloatingSummaryDismissed'; dismissed: boolean }
+  | { type: 'HighlightAdjustmentSection'; sectionId: string }
+  | { type: 'ClearHighlightedAdjustmentSection' }
   | { type: 'Reset' };
+
+export type { Action };
 
 const initialPreset = BLANKET_PRESETS[1];
 
 const INITIAL_STATE: State = {
   step: 'image',
+  imageInputMode: 'upload',
   imageBase64: null,
+  aiImagePrompt: '',
   presetIndex: 1,
   gridWidth: initialPreset.width,
   gridHeight: initialPreset.height,
+  outputType: DEFAULT_OUTPUT_TYPE,
+  customOutputTypeLabel: '',
   colorCount: 6,
   renderMode: 'photo-gradient',
   flattenBackgroundRegions: false,
@@ -230,14 +277,22 @@ const INITIAL_STATE: State = {
   loadingMessage: null,
   error: null,
   toast: null,
+  isAdvancedSettingsExpanded: false,
+  isFloatingSummaryDismissed: false,
+  highlightedAdjustmentSectionId: null,
+  highlightedAdjustmentExpiresAt: null,
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SetStep':
       return { ...state, step: action.step };
+    case 'SetImageInputMode':
+      return { ...state, imageInputMode: action.imageInputMode };
     case 'SetImageBase64':
       return { ...state, imageBase64: action.imageBase64, previewData: null, patternData: null };
+    case 'SetAiImagePrompt':
+      return { ...state, aiImagePrompt: action.aiImagePrompt };
     case 'SetPreset':
       return {
         ...state,
@@ -249,6 +304,14 @@ function reducer(state: State, action: Action): State {
       return { ...state, gridWidth: action.gridWidth };
     case 'SetGridHeight':
       return { ...state, gridHeight: action.gridHeight };
+    case 'SetOutputType':
+      return {
+        ...state,
+        outputType: action.outputType,
+        customOutputTypeLabel: action.outputType === 'other' ? state.customOutputTypeLabel : '',
+      };
+    case 'SetCustomOutputTypeLabel':
+      return { ...state, customOutputTypeLabel: action.customOutputTypeLabel };
     case 'SetColorCount':
       return { ...state, colorCount: action.colorCount };
     case 'SetRenderMode':
@@ -290,6 +353,22 @@ function reducer(state: State, action: Action): State {
       return { ...state, error: action.error };
     case 'SetToast':
       return { ...state, toast: action.toast };
+    case 'SetAdvancedSettingsExpanded':
+      return { ...state, isAdvancedSettingsExpanded: action.expanded };
+    case 'SetFloatingSummaryDismissed':
+      return { ...state, isFloatingSummaryDismissed: action.dismissed };
+    case 'HighlightAdjustmentSection':
+      return {
+        ...state,
+        highlightedAdjustmentSectionId: action.sectionId,
+        highlightedAdjustmentExpiresAt: Date.now() + 2000,
+      };
+    case 'ClearHighlightedAdjustmentSection':
+      return {
+        ...state,
+        highlightedAdjustmentSectionId: null,
+        highlightedAdjustmentExpiresAt: null,
+      };
     case 'Reset':
       return INITIAL_STATE;
     default:
@@ -334,8 +413,23 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function handleAdjustClick(sectionId: string, dispatch: (action: Action) => void) {
+  const element = document.getElementById(sectionId);
+  if (element) {
+    // Highlight the section
+    dispatch({ type: 'HighlightAdjustmentSection', sectionId });
+    // Scroll to it smoothly
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Focus it if it's focusable
+    if (element instanceof HTMLElement) {
+      element.focus();
+    }
+  }
+}
+
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const resolvedOutputTypeLabel = getOutputTypeLabel(state.outputType, state.customOutputTypeLabel);
   const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
   const qaFlags = state.patternData?.qaFlags ?? [];
   const qualityMetrics = state.patternData?.qualityMetrics;
@@ -403,6 +497,19 @@ export default function HomePage() {
     return () => window.clearTimeout(timeout);
   }, [state.toast]);
 
+  // Handle highlight timeout for adjustment links
+  useEffect(() => {
+    if (!state.highlightedAdjustmentExpiresAt) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      dispatch({ type: 'ClearHighlightedAdjustmentSection' });
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [state.highlightedAdjustmentExpiresAt]);
+
   useEffect(() => {
     if (!state.brandId) {
       dispatch({ type: 'SetAvailableYarnColors', colors: [] });
@@ -465,14 +572,57 @@ export default function HomePage() {
     });
   };
 
+  const handleAiImage = async () => {
+    if (!state.aiImagePrompt.trim()) {
+      dispatch({ type: 'SetError', error: 'Please describe the image you want the AI to create or edit.' });
+      return;
+    }
+
+    if (state.imageInputMode === 'ai-edit' && !state.imageBase64) {
+      dispatch({ type: 'SetError', error: 'Upload an image first to use AI edit mode.' });
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SetError', error: null });
+      dispatch({ type: 'SetLoadingMessage', loadingMessage: 'Creating AI image...' });
+
+      const aspectRatio = Number((state.gridWidth / Math.max(state.gridHeight, 1)).toFixed(3));
+      const imageRes = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: state.aiImagePrompt.trim(),
+          aspectRatio,
+          sourceImage: state.imageInputMode === 'ai-edit' ? state.imageBase64 ?? undefined : undefined,
+        }),
+      });
+
+      const imageData = await getJsonOrThrow<{ image: string }>(imageRes);
+      dispatch({ type: 'SetImageBase64', imageBase64: imageData.image });
+      dispatch({ type: 'SetStep', step: 'settings' });
+      dispatch({ type: 'SetToast', toast: 'AI image ready. You can now generate your chart preview.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI image generation failed.';
+      dispatch({ type: 'SetError', error: message });
+    } finally {
+      dispatch({ type: 'SetLoadingMessage', loadingMessage: null });
+    }
+  };
+
   const handleGeneratePreview = async () => {
     if (!state.imageBase64) {
-      dispatch({ type: 'SetError', error: 'Please upload an image first.' });
+      dispatch({ type: 'SetError', error: 'Please upload an image or create one with AI first.' });
       return;
     }
 
     if (state.gridWidth < 20 || state.gridHeight < 20) {
       dispatch({ type: 'SetError', error: 'Grid dimensions must be at least 20 x 20.' });
+      return;
+    }
+
+    if (state.outputType === 'other' && !state.customOutputTypeLabel.trim()) {
+      dispatch({ type: 'SetError', error: 'Please enter a custom output type.' });
       return;
     }
 
@@ -492,9 +642,13 @@ export default function HomePage() {
           renderMode: state.renderMode,
           flattenBackgroundRegions: state.flattenBackgroundRegions,
           stitchType: state.stitchType,
-          yarnWeight: state.yarnWeight,
-          hookSize: state.hookSize,
-          brandId: state.brandId || undefined,
+          outputType: state.outputType,
+          customOutputTypeLabel:
+            state.outputType === 'other' ? state.customOutputTypeLabel.trim() : undefined,
+          yarnWeight: state.imageInputMode === 'upload' ? state.yarnWeight : undefined,
+          hookSize: state.imageInputMode === 'upload' ? state.hookSize : undefined,
+          autoDetectYarnSetup: state.imageInputMode !== 'upload',
+          brandId: state.brandId,
           selectedYarnColorIds:
             state.selectedYarnColorIds.length > 0 ? state.selectedYarnColorIds : undefined,
         }),
@@ -560,6 +714,10 @@ export default function HomePage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
         />
       ))}
+      
+      {/* Step Indicator */}
+      <StepIndicator currentStep={state.step} isGenerating={state.loadingMessage !== null} />
+      
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="crochet-hero mb-8 rounded-[2rem] px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
           <div aria-hidden="true" className="skein skein-peach float-gentle right-6 top-6 hidden lg:block" />
@@ -585,7 +743,7 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <div className="mb-5 flex items-start justify-between gap-4">
+              <div className="mb-5">
                 <div className="max-w-3xl">
                   <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl lg:text-6xl">
                     Crochet Canvas turns any image into a chart you can stitch.
@@ -594,14 +752,6 @@ export default function HomePage() {
                     Upload artwork, tune your yarn settings, and generate polished tapestry previews ready for your next project or shop listing.
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'Reset' })}
-                  className="secondary-button shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold text-[color:var(--foreground)]"
-                >
-                  Start Over
-                </button>
               </div>
 
               <div className="mb-6 grid gap-3 sm:grid-cols-3">
@@ -665,12 +815,22 @@ export default function HomePage() {
 
                 <div className="space-y-3 text-sm text-[color:var(--text-secondary)]">
                   <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
+                    <span>Output type</span>
+                    <span className="font-semibold text-[color:var(--foreground)]">{resolvedOutputTypeLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
                     <span>Stitch mode</span>
-                    <span className="font-semibold text-[color:var(--foreground)]">{state.stitchType === 'tapestry' ? 'Tapestry' : 'C2C'}</span>
+                    <span className="font-semibold text-[color:var(--foreground)]">{state.stitchType === 'tapestry' ? 'Tapestry Crochet' : state.stitchType === 'c2c' ? 'C2C Crochet' : state.stitchType === 'knitting' ? 'Knitting' : 'Cross-Stitch'}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
                     <span>Yarn weight</span>
-                    <span className="font-semibold text-[color:var(--foreground)]">{getYarnWeightConfig(state.yarnWeight).label}</span>
+                    <span className="font-semibold text-[color:var(--foreground)]">
+                      {state.imageInputMode === 'upload'
+                        ? getYarnWeightConfig(state.yarnWeight).label
+                        : state.patternData
+                          ? getYarnWeightConfig(state.patternData.yarnWeight).label
+                          : 'AI auto'}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between rounded-2xl bg-[color:var(--surface-subtle)] px-4 py-3">
                     <span>Grid size</span>
@@ -690,287 +850,72 @@ export default function HomePage() {
           {state.loadingMessage && <div className="banner banner-info">{state.loadingMessage}</div>}
         </div>
 
+        {/* Floating Summary for Mobile */}
+        {state.step === 'settings' && !state.isFloatingSummaryDismissed && (
+          <FloatingSummary
+            outputType={state.outputType}
+            customOutputTypeLabel={state.customOutputTypeLabel}
+            gridWidth={state.gridWidth}
+            gridHeight={state.gridHeight}
+            colorCount={state.colorCount}
+            isGenerating={state.loadingMessage !== null}
+            onDismiss={() => dispatch({ type: 'SetFloatingSummaryDismissed', dismissed: true })}
+          />
+        )}
+
         <div id="generator" className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <section className="space-y-6">
-            <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-primary)]">Step 1</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">Choose your image</h2>
-                </div>
-                <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-secondary)]">
-                  <span className="swatch-dot !h-3 !w-3" style={{ backgroundColor: '#b85c38' }} />
-                  Photo to pattern
-                </div>
-              </div>
+            <ImageUploadSection
+              imageInputMode={state.imageInputMode}
+              aiImagePrompt={state.aiImagePrompt}
+              loadingMessage={state.loadingMessage}
+              onModeChange={(mode) => dispatch({ type: 'SetImageInputMode', imageInputMode: mode })}
+              onFileUpload={handleFileUpload}
+              onAiPromptChange={(prompt) => dispatch({ type: 'SetAiImagePrompt', aiImagePrompt: prompt })}
+              onAiAction={handleAiImage}
+            />
 
-              <div className="space-y-3">
-                <label htmlFor="photo" className="form-label">
-                  Upload photo (JPEG, PNG, WebP up to 10MB)
-                </label>
-                <input
-                  id="photo"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileUpload}
-                  className="form-input block"
-                />
-                <p className="text-sm leading-6 text-[color:var(--text-secondary)]">
-                  Portraits, pets, florals, and graphic art all work. Start with a clean subject and strong contrast for the best chart.
-                </p>
-              </div>
-            </div>
-
-            <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-secondary)]">Step 2</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">Pattern settings</h2>
-                </div>
-                <div className="rounded-full bg-[color:var(--surface-subtle)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
-                  Fine tune the yarn math
-                </div>
-              </div>
-
-              <div className="space-y-5">
-                <div>
-                  <label htmlFor="preset" className="form-label">
-                    Blanket size
-                  </label>
-                  <select
-                    id="preset"
-                    value={state.presetIndex}
-                    onChange={(event) => handlePresetChange(Number(event.target.value))}
-                    className="form-input"
-                  >
-                    {BLANKET_PRESETS.map((preset, index) => (
-                      <option key={preset.label} value={index}>
-                        {preset.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {isCustomPreset && (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="grid-width" className="form-label">
-                        Grid width
-                      </label>
-                      <input
-                        id="grid-width"
-                        type="number"
-                        min={20}
-                        max={432}
-                        value={state.gridWidth}
-                        onChange={(event) =>
-                          dispatch({ type: 'SetGridWidth', gridWidth: Number(event.target.value) || 20 })
-                        }
-                        className="form-input"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="grid-height" className="form-label">
-                        Grid height
-                      </label>
-                      <input
-                        id="grid-height"
-                        type="number"
-                        min={20}
-                        max={432}
-                        value={state.gridHeight}
-                        onChange={(event) =>
-                          dispatch({ type: 'SetGridHeight', gridHeight: Number(event.target.value) || 20 })
-                        }
-                        className="form-input"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="rounded-[1.5rem] bg-gradient-to-r from-[rgba(184,92,56,0.08)] via-[rgba(216,158,88,0.12)] to-[rgba(46,94,138,0.08)] px-4 py-4">
-                  <label htmlFor="color-count" className="form-label mb-2">
-                    Number of colors: <span className="text-[color:var(--foreground)]">{state.colorCount}</span>
-                  </label>
-                  <input
-                    id="color-count"
-                    type="range"
-                    min={2}
-                    max={25}
-                    value={state.colorCount}
-                    onChange={(event) =>
-                      dispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
-                    }
-                    className="color-slider w-full"
-                  />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {HERO_SWATCHES.slice(0, Math.min(state.colorCount, HERO_SWATCHES.length)).map((swatch) => (
-                      <span
-                        key={swatch.name}
-                        className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-[color:var(--text-secondary)]"
-                      >
-                        {swatch.name}
-                      </span>
-                    ))}
-                  </div>
-                  {state.colorCount <= 4 && (
-                    <p className="mt-3 rounded-2xl border border-[color:var(--border-strong)] bg-white/70 px-3 py-3 text-xs leading-5 text-[color:var(--foreground)]">
-                      Very low color counts can flatten details. Increase the slider if the preview feels too simplified.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-white/80 px-4 py-4">
-                  <p className="form-label">Render style</p>
-                  <div className="segmented-control">
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'SetRenderMode', renderMode: 'graphic-clean-art' })}
-                      className={`segmented-button ${state.renderMode === 'graphic-clean-art' ? 'segmented-button-active' : ''}`}
-                    >
-                      Graphic/Clean Art
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'SetRenderMode', renderMode: 'photo-gradient' })}
-                      className={`segmented-button ${state.renderMode === 'photo-gradient' ? 'segmented-button-active' : ''}`}
-                    >
-                      Photo/Gradient
-                    </button>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
-                    Use Graphic/Clean Art for sharper edges and flatter zones. Use Photo/Gradient to preserve tonal transitions.
-                  </p>
-
-                  <label className="mt-3 flex items-start gap-2 rounded-xl bg-[color:var(--surface-subtle)]/70 px-3 py-3 text-sm text-[color:var(--foreground)]">
-                    <input
-                      type="checkbox"
-                      checked={state.flattenBackgroundRegions}
-                      onChange={(event) =>
-                        dispatch({
-                          type: 'SetFlattenBackgroundRegions',
-                          flattenBackgroundRegions: event.target.checked,
-                        })
-                      }
-                      className="mt-0.5"
-                    />
-                    <span>
-                      Flatten background regions (sky/ground/tree masses) for simpler beginner-friendly charts.
-                    </span>
-                  </label>
-                </div>
-
-                <div>
-                  <p className="form-label">Stitch type</p>
-                  <div className="segmented-control">
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'SetStitchType', stitchType: 'tapestry' })}
-                      className={`segmented-button ${state.stitchType === 'tapestry' ? 'segmented-button-active' : ''}`}
-                    >
-                      Tapestry
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'SetStitchType', stitchType: 'c2c' })}
-                      className={`segmented-button ${state.stitchType === 'c2c' ? 'segmented-button-active' : ''}`}
-                    >
-                      C2C (Corner-to-Corner)
-                    </button>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
-                    {state.stitchType === 'tapestry'
-                      ? getYarnWeightConfig(state.yarnWeight).tapestryGaugeHint
-                      : getYarnWeightConfig(state.yarnWeight).c2cGaugeHint}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="yarn-weight" className="form-label">
-                      Yarn weight
-                    </label>
-                    <select
-                      id="yarn-weight"
-                      value={state.yarnWeight}
-                      onChange={(event) =>
-                        dispatch({ type: 'SetYarnWeight', yarnWeight: event.target.value as YarnWeight })
-                      }
-                      className="form-input"
-                    >
-                      {YARN_WEIGHT_CONFIGS.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="hook-size" className="form-label">
-                      Hook size
-                    </label>
-                    <select
-                      id="hook-size"
-                      value={state.hookSize}
-                      onChange={(event) => dispatch({ type: 'SetHookSize', hookSize: event.target.value })}
-                      className="form-input"
-                    >
-                      {getYarnWeightConfig(state.yarnWeight).hookOptions.map((h) => (
-                        <option key={h.label} value={h.label}>
-                          {h.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="brand" className="form-label">
-                    Yarn brand (optional)
-                  </label>
-                  <select
-                    id="brand"
-                    value={state.brandId}
-                    onChange={(event) => dispatch({ type: 'SetBrandId', brandId: event.target.value })}
-                    className="form-input"
-                  >
-                    {YARN_BRANDS.map((brand) => (
-                      <option key={brand.value || 'none'} value={brand.value}>
-                        {brand.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {state.brandId && (
-                  <div>
-                    <label htmlFor="brand-colors" className="form-label">
-                      On-hand yarn colors (optional)
-                    </label>
-                    <select
-                      id="brand-colors"
-                      multiple
-                      value={state.selectedYarnColorIds}
-                      onChange={(event) => {
-                        const selected = Array.from(event.target.selectedOptions, (option) => option.value);
-                        dispatch({ type: 'SetSelectedYarnColorIds', colorIds: selected });
-                      }}
-                      className="form-input h-36"
-                    >
-                      {state.availableYarnColors.map((color) => (
-                        <option key={color.id} value={color.id}>
-                          {`${color.name} (${color.hex})`}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
-                      Limit the palette to yarn you already own and keep your final shopping list realistic.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <SettingsForm
+              outputType={state.outputType}
+              customOutputTypeLabel={state.customOutputTypeLabel}
+              presetIndex={state.presetIndex}
+              gridWidth={state.gridWidth}
+              gridHeight={state.gridHeight}
+              colorCount={state.colorCount}
+              renderMode={state.renderMode}
+              flattenBackgroundRegions={state.flattenBackgroundRegions}
+              stitchType={state.stitchType}
+              imagInputMode={state.imageInputMode}
+              yarnWeight={state.yarnWeight}
+              hookSize={state.hookSize}
+              brandId={state.brandId}
+              selectedYarnColorIds={state.selectedYarnColorIds}
+              availableYarnColors={state.availableYarnColors}
+              isAdvancedSettingsExpanded={state.isAdvancedSettingsExpanded}
+              patternData={state.patternData}
+              onOutputTypeChange={(outputType) => dispatch({ type: 'SetOutputType', outputType })}
+              onCustomOutputTypeLabelChange={(label) =>
+                dispatch({ type: 'SetCustomOutputTypeLabel', customOutputTypeLabel: label })
+              }
+              onPresetChange={(preset) => handlePresetChange(preset)}
+              onGridWidthChange={(width) => dispatch({ type: 'SetGridWidth', gridWidth: width })}
+              onGridHeightChange={(height) => dispatch({ type: 'SetGridHeight', gridHeight: height })}
+              onColorCountChange={(count) => dispatch({ type: 'SetColorCount', colorCount: count })}
+              onRenderModeChange={(mode) => dispatch({ type: 'SetRenderMode', renderMode: mode })}
+              onFlattenBackgroundChange={(flatten) =>
+                dispatch({ type: 'SetFlattenBackgroundRegions', flattenBackgroundRegions: flatten })
+              }
+              onStitchTypeChange={(stitch) => dispatch({ type: 'SetStitchType', stitchType: stitch })}
+              onYarnWeightChange={(weight) => dispatch({ type: 'SetYarnWeight', yarnWeight: weight })}
+              onHookSizeChange={(size) => dispatch({ type: 'SetHookSize', hookSize: size })}
+              onBrandIdChange={(brandId) => dispatch({ type: 'SetBrandId', brandId })}
+              onSelectedYarnColorIdsChange={(colorIds) =>
+                dispatch({ type: 'SetSelectedYarnColorIds', colorIds })
+              }
+              onAdvancedSettingsExpandedChange={(expanded) =>
+                dispatch({ type: 'SetAdvancedSettingsExpanded', expanded })
+              }
+            />
 
             <button
               type="button"
@@ -982,190 +927,15 @@ export default function HomePage() {
             </button>
           </section>
 
-          <section className="space-y-6">
-            <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-secondary)]">Preview board</p>
-                  <h2 className="font-display mt-1 text-2xl font-semibold text-[color:var(--foreground)]">See the chart before you buy</h2>
-                </div>
-                <div className="rounded-full bg-[color:var(--surface-subtle)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
-                  Watermarked sample
-                </div>
-              </div>
-
-              {warningList.length > 0 && (
-                <div className="mb-4 rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-4 py-3 text-sm leading-6 text-[color:var(--foreground)]">
-                  <p className="font-semibold">Quality checks</p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    {warningList.map((warning, index) => (
-                      <li key={`${warning}-${index}`}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {state.imageBase64 ? (
-                <div className="preview-frame relative h-72 w-full rounded-[1.5rem] p-3">
-                  <img
-                    src={state.imageBase64}
-                    alt="Source preview"
-                    className="h-full w-full rounded-[1.1rem] object-contain"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                  <div
-                    className="absolute inset-3 rounded-[1.1rem]"
-                    style={{
-                      backgroundImage:
-                        'linear-gradient(to right, rgba(90,72,56,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(90,72,56,0.15) 1px, transparent 1px)',
-                      backgroundSize: '12px 12px',
-                      backgroundPosition: '0 0, 0 0',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="preview-frame flex min-h-72 items-center justify-center rounded-[1.5rem] px-6 text-center text-sm leading-6 text-[color:var(--text-secondary)]">
-                  Your uploaded image preview appears here once you add a photo.
-                </div>
-              )}
-            </div>
-
-            {state.previewData && (
-              <>
-                <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">{state.previewData.title}</h3>
-                    <div className="mono-meta rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-secondary)]">
-                      {state.previewData.totalRows} rows in chart
-                    </div>
-                  </div>
-
-                  <div className="preview-frame relative h-[min(65vh,460px)] rounded-[1.5rem] p-3">
-                    <div
-                      className="flex h-full w-full items-center justify-center rounded-[1rem] bg-white/70 p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:max-h-full [&>svg]:max-w-full [&>svg]:w-auto"
-                      dangerouslySetInnerHTML={{ __html: state.previewData.previewSvg }}
-                    />
-                    {state.previewData.isWatermarked && (
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div className="rotate-[-18deg] text-3xl font-black uppercase tracking-[0.18em] text-[color:var(--foreground)]/20 sm:text-5xl">
-                          Preview Only
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
-                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">Color legend</h3>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-[color:var(--text-secondary)]">
-                        Preview includes {state.previewData.colorLegend.length} of {state.previewData.totalLegendCount} colors.
-                        {state.previewData.hiddenLegendCount > 0
-                          ? ` Purchase the PDF to unlock the remaining ${state.previewData.hiddenLegendCount} colors and full yarn inventory.`
-                          : ' Purchase the PDF to unlock the complete pattern and yarn inventory.'}
-                      </p>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-[color:var(--text-secondary)]">
-                        Final PDF includes both formats: a full stitch chart grid and written row-by-row instructions.
-                      </p>
-                    </div>
-                    <div className="flex -space-x-2">
-                      {state.previewData.colorLegend.slice(0, 5).map((entry, index) => (
-                        <span
-                          key={`${entry.symbol}-${index}`}
-                          className="swatch-dot !h-6 !w-6"
-                          style={{ backgroundColor: entry.hex }}
-                          aria-hidden="true"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-[1.25rem] border border-[color:var(--border-soft)] bg-white/70">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="bg-[color:var(--surface-subtle)]/80 text-[color:var(--text-secondary)]">
-                        <tr>
-                          <th className="px-4 py-3">Color</th>
-                          <th className="px-4 py-3">Symbol</th>
-                          <th className="px-4 py-3">Yarn Color</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.previewData.colorLegend.map((entry, index) => (
-                          <tr key={`${entry.symbol}-${entry.hex}-${index}`} className="border-t border-[color:var(--border-soft)]/60">
-                            <td className="px-4 py-3">
-                              <span
-                                className="inline-block h-6 w-6 rounded-full border-2 border-white shadow-sm"
-                                style={{ backgroundColor: entry.hex }}
-                                aria-label={`Color ${entry.hex}`}
-                              />
-                            </td>
-                            <td className="px-4 py-3 font-semibold text-[color:var(--foreground)]">{entry.symbol}</td>
-                            <td className="px-4 py-3 text-[color:var(--text-secondary)]">{getYarnDisplayName(entry)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
-                  <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">Pre-checkout QA</h3>
-                  <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">
-                    Automated checks run on every generated chart to catch readability risks before purchase.
-                  </p>
-
-                  {qualityMetrics && (
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <div className="rounded-2xl bg-[color:var(--surface-subtle)] px-3 py-3">
-                        <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">Duplicate colors</p>
-                        <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
-                          {Math.round(qualityMetrics.duplicateColorRatio * 100)}%
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-[color:var(--surface-subtle)] px-3 py-3">
-                        <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">Fragmentation</p>
-                        <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
-                          {Math.round(qualityMetrics.flatRegionFragmentation * 100)}%
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-[color:var(--surface-subtle)] px-3 py-3">
-                        <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-secondary)]">Sky/tree continuity</p>
-                        <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
-                          {qualityMetrics.skyTreeContinuityScore}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {qaFlags.length > 0 ? (
-                    <div className="mt-4 rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-4 py-3">
-                      <p className="text-sm font-semibold text-[color:var(--foreground)]">Flags to review before checkout:</p>
-                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-[color:var(--foreground)]">
-                        {qaFlags.map((flag, index) => (
-                          <li key={`${flag}-${index}`}>{flag}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p className="mt-4 rounded-2xl border border-[color:var(--border-soft)] bg-white/70 px-4 py-3 text-sm text-[color:var(--text-secondary)]">
-                      No critical QA flags detected for this chart.
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCheckout}
-                  disabled={state.loadingMessage !== null || state.step === 'buying'}
-                  className="success-button w-full rounded-[1.4rem] px-6 py-4 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Buy PDF Pattern
-                </button>
-              </>
-            )}
-          </section>
+          {/* Preview Board (Right Column) */}
+          <PreviewBoard
+            imageBase64={state.imageBase64}
+            previewData={state.previewData}
+            patternData={state.patternData}
+            loadingMessage={state.loadingMessage}
+            onCheckout={handleCheckout}
+            onAdjustWarning={(sectionId) => handleAdjustClick(sectionId, dispatch)}
+          />
         </div>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-3">

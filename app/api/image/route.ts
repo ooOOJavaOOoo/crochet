@@ -13,6 +13,7 @@ const schema = z.object({
   prompt: z.string().max(1000).optional(),
   aspectRatio: z.union([z.string().max(20), z.number().positive().max(10)]).optional(),
   sourceImage: z.string().max(15_000_000).optional(),
+  stylePreset: z.enum(['default', 'amigurumi-plush-3d']).optional(),
 });
 
 type ImagenAspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
@@ -26,7 +27,21 @@ const IMAGEN_ASPECT_RATIOS: Array<{ ratio: ImagenAspectRatio; value: number }> =
 ];
 
 const DEFAULT_IMAGE_PROMPT =
-  'Create a crochet-friendly image with strong contrast and simplified color blocks.';
+  'Create a crochet-friendly image with strong contrast, simplified color blocks, and crisp boundaries. Preserve semantic layer separation: major disjoint subjects must use clearly different color families, even if similar in brightness (for example, keep a face and the moon in different hues). Avoid blending unrelated objects into the same hue.';
+
+const AMIGURUMI_PLUSH_3D_PROMPT =
+  'Create a 3D amigurumi-style toy-animal concept that looks soft and stuffable, with rounded plush volume, clean silhouette, and clear separate body parts (head, torso, limbs, ears, tail). Use beginner-friendly crochet cues: visible stitch texture, simple shaping, and seam-friendly transitions that could be assembled as a stuffed toy. Keep the design cute, front-facing or three-quarter view, and avoid photoreal fur, metallic materials, tiny hard-to-crochet details, or cluttered backgrounds.';
+
+function buildPrompt(prompt: string | undefined, stylePreset: 'default' | 'amigurumi-plush-3d' | undefined): string {
+  const userPrompt = typeof prompt === 'string' && prompt.trim().length > 0 ? prompt.trim() : '';
+  const basePresetPrompt = stylePreset === 'amigurumi-plush-3d' ? AMIGURUMI_PLUSH_3D_PROMPT : DEFAULT_IMAGE_PROMPT;
+
+  if (!userPrompt) {
+    return basePresetPrompt;
+  }
+
+  return `${userPrompt}\n\nStyle requirements: ${basePresetPrompt}`;
+}
 
 function normalizeAspectRatio(input: unknown): ImagenAspectRatio | undefined {
   if (typeof input === 'string') {
@@ -69,10 +84,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const { prompt, aspectRatio, sourceImage } = parsed.data;
+    const { prompt, aspectRatio, sourceImage, stylePreset } = parsed.data;
     const normalizedAspectRatio = normalizeAspectRatio(aspectRatio);
-    const promptText =
-      typeof prompt === 'string' && prompt.trim().length > 0 ? prompt.trim() : DEFAULT_IMAGE_PROMPT;
+    const promptText = buildPrompt(prompt, stylePreset);
 
     const project = getGoogleVertexProject();
     if (!project) {

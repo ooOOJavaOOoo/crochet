@@ -1,8 +1,26 @@
 import { randomUUID } from 'crypto';
 
-export type StitchType = 'tapestry' | 'c2c';
+export type StitchType = 'tapestry' | 'c2c' | 'knitting' | 'cross-stitch';
 
 export type YarnWeight = 'fingering' | 'sport' | 'dk' | 'worsted' | 'bulky' | 'super-bulky';
+
+export const OUTPUT_TYPES = [
+  'blanket',
+  'beanie',
+  'scarf',
+  'amigurumi',
+  'top',
+  'sweater',
+  'shawl',
+  'hat',
+  'bag',
+  'pillow',
+  'wall-hanging',
+  'other',
+] as const;
+
+export type OutputType = (typeof OUTPUT_TYPES)[number];
+export const DEFAULT_OUTPUT_TYPE: OutputType = 'blanket';
 
 export type RenderMode = 'graphic-clean-art' | 'photo-gradient';
 
@@ -42,6 +60,8 @@ export interface PatternData {
   aspectRatio: number;
   title: string;
   stitchType: StitchType;
+  outputType: OutputType;
+  customOutputTypeLabel?: string;
   yarnWeight: YarnWeight;
   hookSize: string;
   renderMode?: RenderMode;

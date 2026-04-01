@@ -5,12 +5,15 @@ import { quantizeImage } from '@/lib/pattern';
 import { renderStitchChart } from '@/lib/svg';
 import { generatePatternPdf } from '@/lib/pdf';
 import { generatePatternId } from '@/lib/types';
-import type { PatternData, StoredPattern } from '@/lib/types';
+import { DEFAULT_OUTPUT_TYPE, OUTPUT_TYPES } from '@/lib/types';
+import type { PatternData, StoredPattern, YarnWeight } from '@/lib/types';
 import { type QuantizeResult } from '@/lib/pattern';
 import { generateTitle } from '@/lib/prompts/titleGenerator';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
 import { getFriendlyColorName, findYarnColorByName, getSkeinYardage } from '@/lib/yarn';
 import { matchColors, type YarnBrand } from '@/lib/prompts/colorMatcher';
+import { getDefaultHook, DEFAULT_YARN_WEIGHT } from '@/lib/yarnWeight';
+import { getOutputTypeLabel } from '@/lib/outputType';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -20,14 +23,25 @@ const schema = z.object({
   gridWidth: z.number().int().min(20).max(432),
   gridHeight: z.number().int().min(20).max(432),
   colorCount: z.number().int().min(0).max(30), // 0 = auto-detect
-  brandId: z.string().optional(),
+  brandId: z.string().min(1),
   selectedYarnColorIds: z.array(z.string().min(1)).optional(),
-  stitchType: z.enum(['tapestry', 'c2c']).optional().default('tapestry'),
-  yarnWeight: z.enum(['fingering', 'sport', 'dk', 'worsted', 'bulky', 'super-bulky']).optional().default('worsted'),
+  stitchType: z.enum(['tapestry', 'c2c', 'knitting', 'cross-stitch']).optional().default('tapestry'),
+  outputType: z.enum(OUTPUT_TYPES).optional().default(DEFAULT_OUTPUT_TYPE),
+  customOutputTypeLabel: z.string().trim().min(2).max(40).optional(),
+  yarnWeight: z.enum(['fingering', 'sport', 'dk', 'worsted', 'bulky', 'super-bulky']).optional(),
   hookSize: z.string().max(30).optional(),
   renderMode: z.enum(['graphic-clean-art', 'photo-gradient']).optional().default('photo-gradient'),
   flattenBackgroundRegions: z.boolean().optional().default(false),
   useAiColorMatch: z.boolean().optional().default(false),
+  autoDetectYarnSetup: z.boolean().optional().default(false),
+}).superRefine((value, ctx) => {
+  if (value.outputType === 'other' && !value.customOutputTypeLabel) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['customOutputTypeLabel'],
+      message: 'Please provide a custom output type label when outputType is "other".',
+    });
+  }
 });
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -59,12 +73,27 @@ export async function POST(request: Request): Promise<Response> {
       brandId,
       selectedYarnColorIds,
       stitchType,
+      outputType,
+      customOutputTypeLabel,
       yarnWeight,
       hookSize,
       renderMode,
       flattenBackgroundRegions,
       useAiColorMatch,
+      autoDetectYarnSetup,
     } = parsed.data;
+
+    const inferredYarnWeight: YarnWeight = autoDetectYarnSetup
+      ? gridWidth * gridHeight >= 55_000
+        ? 'sport'
+        : gridWidth * gridHeight >= 28_000
+          ? 'dk'
+          : DEFAULT_YARN_WEIGHT
+      : (yarnWeight ?? DEFAULT_YARN_WEIGHT);
+
+    const inferredHookSize = autoDetectYarnSetup
+      ? getDefaultHook(inferredYarnWeight, stitchType)
+      : hookSize;
 
     // Strip optional data URI prefix and validate decoded size
     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
@@ -84,8 +113,8 @@ export async function POST(request: Request): Promise<Response> {
       brandId,
       selectedYarnColorIds,
       stitchType,
-      yarnWeight,
-      hookSize,
+      yarnWeight: inferredYarnWeight,
+      hookSize: inferredHookSize,
       renderMode,
       flattenBackgroundRegions,
     });
@@ -186,12 +215,17 @@ export async function POST(request: Request): Promise<Response> {
     const colorNames = rawPattern.palette.map(
       (p) => p.yarnColorName ?? p.name ?? getFriendlyColorName(p.hex),
     );
-    const { title } = await generateTitle({ colorNames });
+    const { title } = await generateTitle({
+      colorNames,
+      outputTypeLabel: getOutputTypeLabel(outputType, customOutputTypeLabel),
+    });
 
     const patternData: PatternData = {
       patternId,
       ...rawPattern,
       title,
+      outputType,
+      customOutputTypeLabel,
       createdAt: new Date().toISOString(),
     };
 

@@ -1,5 +1,6 @@
 export type CrochetPromptOptions = {
   gridSize?: string;
+  outputType?: string;
   colorLimit?: 'auto' | 'reduced' | 'yarn-brand' | 'exact';
   yarnBrand?: string;
   yarnColors?: string;
@@ -9,6 +10,7 @@ export type CrochetPromptOptions = {
 export function buildCrochetPrompt(options: CrochetPromptOptions) {
   const {
     gridSize,
+    outputType,
     colorLimit = 'auto',
     yarnBrand = '',
     yarnColors = '',
@@ -18,6 +20,9 @@ export function buildCrochetPrompt(options: CrochetPromptOptions) {
   const gridInstruction = gridSize
     ? `Use grid size ${gridSize} (width x height in stitches).`
     : 'Suggest an appropriate grid size based on image detail.';
+  const outputInstruction = outputType
+    ? `Target output type: ${outputType}.`
+    : 'Target output type: blanket.';
 
   let colorInstruction = 'Automatically select a palette that preserves clarity and contrast.';
   if (colorLimit === 'exact' && yarnColors) {
@@ -31,5 +36,5 @@ export function buildCrochetPrompt(options: CrochetPromptOptions) {
     colorInstruction = 'Reduce palette while preserving clarity and contrast.';
   }
 
-  return `You are an expert tapestry crochet pattern assistant. Convert the provided image into a complete tapestry crochet pattern plan.\n\n- ${gridInstruction}\n- ${colorInstruction}\n- Use single crochet throughout.\n- No increases or decreases.\n- Provide a color legend (symbol -> color).\n- Provide a grid with row-by-row instructions.\n- Include notes for color changes and carrying yarn.\n\nUser settings:\n- yarnBrand: ${yarnBrand || 'none'}\n- yarnColors: ${yarnColors || 'auto'}\n- allowAugmentedColors: ${allowAugmentedColors}\n\nGenerate the pattern now.`;
+  return `You are an expert tapestry crochet pattern assistant. Convert the provided image into a complete tapestry crochet pattern plan.\n\n- ${gridInstruction}\n- ${colorInstruction}\n- ${outputInstruction}\n- Use single crochet throughout.\n- No increases or decreases.\n- Provide a color legend (symbol -> color).\n- Provide a grid with row-by-row instructions.\n- Include notes for color changes and carrying yarn.\n\nUser settings:\n- yarnBrand: ${yarnBrand || 'none'}\n- yarnColors: ${yarnColors || 'auto'}\n- allowAugmentedColors: ${allowAugmentedColors}\n- outputType: ${outputType || 'blanket'}\n\nGenerate the pattern now.`;
 }

@@ -426,7 +426,125 @@ export function findNearestYarnColorFromIds(hex: string, colorIds: string[]): Ya
   return findNearestFromPool(hex, pool);
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.replace('#', '');
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  };
+}
+
+function isNearWhiteTone(hex: string): boolean {
+  const { r, g, b } = hexToRgb(hex);
+  const minChannel = Math.min(r, g, b);
+  const maxChannel = Math.max(r, g, b);
+  const avg = (r + g + b) / 3;
+  const blueBias = b - r;
+  const balancedChannels = Math.abs(r - g) <= 14 && Math.abs(g - b) <= 14 && Math.abs(r - b) <= 14;
+  return avg >= 230 && minChannel >= 220 && (maxChannel - minChannel) <= 16 && balancedChannels && blueBias < 2;
+}
+
+function isLightCoolTone(hex: string): boolean {
+  const { r, g, b } = hexToRgb(hex);
+  const minChannel = Math.min(r, g, b);
+  const avg = (r + g + b) / 3;
+  const coolBias = b - Math.max(r, g);
+  return avg >= 166 && minChannel >= 102 && coolBias >= -5 && (b - r) >= 2;
+}
+
+function isLightPastelNonWhiteTone(hex: string): boolean {
+  const { r, g, b } = hexToRgb(hex);
+  const minChannel = Math.min(r, g, b);
+  const maxChannel = Math.max(r, g, b);
+  const avg = (r + g + b) / 3;
+  const warmDominance = r - b;
+  return avg >= 168 && minChannel >= 104 && (maxChannel - minChannel) <= 90 && warmDominance < 36;
+}
+
+function isSnoutLikeFallbackTone(hex: string): boolean {
+  const { r, g, b } = hexToRgb(hex);
+  const minChannel = Math.min(r, g, b);
+  const maxChannel = Math.max(r, g, b);
+  const avg = (r + g + b) / 3;
+
+  // Avoid mapping warm/yellow highlights to gray.
+  const stronglyWarmYellow = r > g + 26 && g > b + 10;
+  if (stronglyWarmYellow) return false;
+
+  // Light, low-to-medium chroma tones that are not true whites should fallback to gray.
+  return avg >= 166 && minChannel >= 105 && (maxChannel - minChannel) <= 82;
+}
+
+function hasToken(name: string, tokens: string[]): boolean {
+  const lower = name.toLowerCase();
+  return tokens.some((token) => lower.includes(token));
+}
+
+function isLightGrayCandidate(hex: string): boolean {
+  const { r, g, b } = hexToRgb(hex);
+  const avg = (r + g + b) / 3;
+  return Math.abs(r - g) <= 18 && Math.abs(g - b) <= 18 && avg >= 88 && avg <= 244;
+}
+
+function hasBlueBias(hex: string): boolean {
+  const { r, b } = hexToRgb(hex);
+  return (b - r) >= 2;
+}
+
+function selectPreferredShade(hex: string, pool: YarnColor[]): YarnColor | null {
+  if (pool.length === 0) return null;
+
+  const lightGrayTokens = ['light grey', 'light gray', 'silver', 'grey heather', 'gray heather', 'slate grey', 'slate gray'];
+  const grayPool = pool.filter((color) => hasToken(color.name, lightGrayTokens) || isLightGrayCandidate(color.hex));
+
+  if (isLightCoolTone(hex)) {
+    const lightBlueTokens = ['light blue', 'baby blue', 'sky blue', 'ice blue', 'powder blue', 'country blue'];
+    const bluePool = pool.filter((color) => hasToken(color.name, lightBlueTokens));
+    if (bluePool.length > 0) {
+      return findNearestFromPoolRaw(hex, bluePool);
+    }
+
+    if (grayPool.length > 0) {
+      return findNearestFromPoolRaw(hex, grayPool);
+    }
+  }
+
+  // If the source is a light pastel (snout-like) but not true neutral white,
+  // prefer gray fallback over white when no light-blue option exists.
+  if (
+    !isNearWhiteTone(hex) &&
+    grayPool.length > 0 &&
+    (isLightCoolTone(hex) || ((isLightPastelNonWhiteTone(hex) || isSnoutLikeFallbackTone(hex)) && hasBlueBias(hex)))
+  ) {
+    return findNearestFromPoolRaw(hex, grayPool);
+  }
+
+  if (isNearWhiteTone(hex) && !hasBlueBias(hex)) {
+    const whiteTokens = ['white', 'off white', 'soft white', 'bone', 'fisherman', 'cream', 'ivory'];
+    const whitePool = pool.filter((color) => hasToken(color.name, whiteTokens));
+    if (whitePool.length > 0) {
+      return findNearestFromPoolRaw(hex, whitePool);
+    }
+  }
+
+  return null;
+}
+
 function findNearestFromPool(hex: string, pool: YarnColor[]): YarnColor {
+  if (pool.length === 0) {
+    throw new Error('Cannot find nearest yarn color from an empty pool.');
+  }
+
+  const preferred = selectPreferredShade(hex, pool);
+  if (preferred) {
+    return preferred;
+  }
+
+  return findNearestFromPoolRaw(hex, pool);
+}
+
+function findNearestFromPoolRaw(hex: string, pool: YarnColor[]): YarnColor {
   if (pool.length === 0) {
     throw new Error('Cannot find nearest yarn color from an empty pool.');
   }
