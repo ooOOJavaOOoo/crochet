@@ -1,34 +1,27 @@
 'use client';
 
 import { ChangeEvent } from 'react';
-import type { Action } from '@/app/page';
 
 type ImageInputMode = 'upload' | 'ai-generate' | 'ai-edit';
 
 interface ImageUploadSectionProps {
   imageInputMode: ImageInputMode;
-  imageBase64: string | null;
   aiImagePrompt: string;
-  gridWidth: number;
-  gridHeight: number;
   loadingMessage: string | null;
-  onImageInputModeChange: (mode: ImageInputMode) => void;
+  onModeChange: (mode: ImageInputMode) => void;
   onFileUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
-  onAiImageGenerate: () => Promise<void>;
-  onDispatch: (action: Action) => void;
+  onAiPromptChange: (prompt: string) => void;
+  onAiAction: () => Promise<void>;
 }
 
 export default function ImageUploadSection({
   imageInputMode,
-  imageBase64,
   aiImagePrompt,
-  gridWidth,
-  gridHeight,
   loadingMessage,
-  onImageInputModeChange,
+  onModeChange,
   onFileUpload,
-  onAiImageGenerate,
-  onDispatch,
+  onAiPromptChange,
+  onAiAction,
 }: ImageUploadSectionProps) {
   return (
     <div className="crochet-card rounded-[1.75rem] p-5 sm:p-6">
@@ -50,21 +43,21 @@ export default function ImageUploadSection({
           <div className="segmented-control">
             <button
               type="button"
-              onClick={() => onImageInputModeChange('upload')}
+              onClick={() => onModeChange('upload')}
               className={`segmented-button ${imageInputMode === 'upload' ? 'segmented-button-active' : ''}`}
             >
               Upload Only
             </button>
             <button
               type="button"
-              onClick={() => onImageInputModeChange('ai-generate')}
+              onClick={() => onModeChange('ai-generate')}
               className={`segmented-button ${imageInputMode === 'ai-generate' ? 'segmented-button-active' : ''}`}
             >
               AI Generate
             </button>
             <button
               type="button"
-              onClick={() => onImageInputModeChange('ai-edit')}
+              onClick={() => onModeChange('ai-edit')}
               className={`segmented-button ${imageInputMode === 'ai-edit' ? 'segmented-button-active' : ''}`}
             >
               AI Edit Upload
@@ -97,9 +90,7 @@ export default function ImageUploadSection({
             <textarea
               id="ai-prompt"
               value={aiImagePrompt}
-              onChange={(event) =>
-                onDispatch({ type: 'SetAiImagePrompt', aiImagePrompt: event.target.value })
-              }
+              onChange={(event) => onAiPromptChange(event.target.value)}
               className="form-input min-h-24"
               placeholder={
                 imageInputMode === 'ai-generate'
@@ -109,7 +100,7 @@ export default function ImageUploadSection({
             />
             <button
               type="button"
-              onClick={onAiImageGenerate}
+              onClick={onAiAction}
               disabled={loadingMessage !== null}
               className="secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
             >
