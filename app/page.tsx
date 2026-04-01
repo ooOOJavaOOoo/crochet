@@ -883,7 +883,7 @@ export default function HomePage() {
               renderMode={state.renderMode}
               flattenBackgroundRegions={state.flattenBackgroundRegions}
               stitchType={state.stitchType}
-              imagInputMode={state.imageInputMode}
+              imageInputMode={state.imageInputMode}
               yarnWeight={state.yarnWeight}
               hookSize={state.hookSize}
               brandId={state.brandId}
@@ -891,28 +891,10 @@ export default function HomePage() {
               availableYarnColors={state.availableYarnColors}
               isAdvancedSettingsExpanded={state.isAdvancedSettingsExpanded}
               patternData={state.patternData}
-              onOutputTypeChange={(outputType) => dispatch({ type: 'SetOutputType', outputType })}
-              onCustomOutputTypeLabelChange={(label) =>
-                dispatch({ type: 'SetCustomOutputTypeLabel', customOutputTypeLabel: label })
-              }
-              onPresetChange={(preset) => handlePresetChange(preset)}
-              onGridWidthChange={(width) => dispatch({ type: 'SetGridWidth', gridWidth: width })}
-              onGridHeightChange={(height) => dispatch({ type: 'SetGridHeight', gridHeight: height })}
-              onColorCountChange={(count) => dispatch({ type: 'SetColorCount', colorCount: count })}
-              onRenderModeChange={(mode) => dispatch({ type: 'SetRenderMode', renderMode: mode })}
-              onFlattenBackgroundChange={(flatten) =>
-                dispatch({ type: 'SetFlattenBackgroundRegions', flattenBackgroundRegions: flatten })
-              }
-              onStitchTypeChange={(stitch) => dispatch({ type: 'SetStitchType', stitchType: stitch })}
-              onYarnWeightChange={(weight) => dispatch({ type: 'SetYarnWeight', yarnWeight: weight })}
-              onHookSizeChange={(size) => dispatch({ type: 'SetHookSize', hookSize: size })}
-              onBrandIdChange={(brandId) => dispatch({ type: 'SetBrandId', brandId })}
-              onSelectedYarnColorIdsChange={(colorIds) =>
-                dispatch({ type: 'SetSelectedYarnColorIds', colorIds })
-              }
               onAdvancedSettingsExpandedChange={(expanded) =>
                 dispatch({ type: 'SetAdvancedSettingsExpanded', expanded })
               }
+              onDispatch={dispatch}
             />
 
             <button
