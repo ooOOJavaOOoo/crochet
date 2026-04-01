@@ -249,8 +249,6 @@ type Action =
   | { type: 'ClearHighlightedAdjustmentSection' }
   | { type: 'Reset' };
 
-export type { Action };
-
 const initialPreset = BLANKET_PRESETS[1];
 
 const INITIAL_STATE: State = {
