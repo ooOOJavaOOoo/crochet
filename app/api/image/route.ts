@@ -29,12 +29,23 @@ const IMAGEN_ASPECT_RATIOS: Array<{ ratio: ImagenAspectRatio; value: number }> =
 const DEFAULT_IMAGE_PROMPT =
   'Create a crochet-friendly image with strong contrast, simplified color blocks, and crisp boundaries. Preserve semantic layer separation: major disjoint subjects must use clearly different color families, even if similar in brightness (for example, keep a face and the moon in different hues). Avoid blending unrelated objects into the same hue.';
 
+const DEFAULT_IMAGE_EDIT_PROMPT =
+  'Edit the provided source image instead of replacing it. Preserve the original subject identity, composition, pose, and key shapes unless the user explicitly asks to change them. Apply requested changes as localized edits while keeping the image crochet-friendly with strong contrast, simplified color blocks, and crisp boundaries.';
+
 const AMIGURUMI_PLUSH_3D_PROMPT =
   'Create a 3D amigurumi-style toy-animal concept that looks soft and stuffable, with rounded plush volume, clean silhouette, and clear separate body parts (head, torso, limbs, ears, tail). Use beginner-friendly crochet cues: visible stitch texture, simple shaping, and seam-friendly transitions that could be assembled as a stuffed toy. Keep the design cute, front-facing or three-quarter view, and avoid photoreal fur, metallic materials, tiny hard-to-crochet details, or cluttered backgrounds.';
 
-function buildPrompt(prompt: string | undefined, stylePreset: 'default' | 'amigurumi-plush-3d' | undefined): string {
+function buildPrompt(
+  prompt: string | undefined,
+  stylePreset: 'default' | 'amigurumi-plush-3d' | undefined,
+  isEditMode: boolean
+): string {
   const userPrompt = typeof prompt === 'string' && prompt.trim().length > 0 ? prompt.trim() : '';
-  const basePresetPrompt = stylePreset === 'amigurumi-plush-3d' ? AMIGURUMI_PLUSH_3D_PROMPT : DEFAULT_IMAGE_PROMPT;
+  const basePresetPrompt = isEditMode
+    ? DEFAULT_IMAGE_EDIT_PROMPT
+    : stylePreset === 'amigurumi-plush-3d'
+      ? AMIGURUMI_PLUSH_3D_PROMPT
+      : DEFAULT_IMAGE_PROMPT;
 
   if (!userPrompt) {
     return basePresetPrompt;
@@ -86,7 +97,7 @@ export async function POST(request: Request) {
 
     const { prompt, aspectRatio, sourceImage, stylePreset } = parsed.data;
     const normalizedAspectRatio = normalizeAspectRatio(aspectRatio);
-    const promptText = buildPrompt(prompt, stylePreset);
+    const promptText = buildPrompt(prompt, stylePreset, Boolean(sourceImage));
 
     const project = getGoogleVertexProject();
     if (!project) {

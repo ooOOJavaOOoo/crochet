@@ -267,7 +267,7 @@ const INITIAL_STATE: State = {
   stitchType: 'tapestry',
   yarnWeight: DEFAULT_YARN_WEIGHT,
   hookSize: getDefaultHook(DEFAULT_YARN_WEIGHT, 'tapestry'),
-  brandId: 'red-heart',
+  brandId: '',
   availableYarnColors: [],
   selectedYarnColorIds: [],
   patternData: null,
@@ -621,6 +621,11 @@ export default function HomePage() {
 
     if (state.outputType === 'other' && !state.customOutputTypeLabel.trim()) {
       dispatch({ type: 'SetError', error: 'Please enter a custom output type.' });
+      return;
+    }
+
+    if (!state.brandId) {
+      dispatch({ type: 'SetError', error: 'Please select a brand.' });
       return;
     }
 

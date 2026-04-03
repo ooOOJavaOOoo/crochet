@@ -53,6 +53,7 @@ export interface QuantizeOptions {
 
 export interface QuantizeResult {
   stitchGrid: number[][];                   // [row][col], row 0 = bottom-left
+  sourceHintGrid: number[][];               // [row][col], source-class bit flags
   palette: PaletteEntry[];
   dimensions: { width: number; height: number };
   inventory: YarnInventoryEntry[];
@@ -168,6 +169,28 @@ function buildStitchGridFromIndices(
     const imageRow = gridHeight - 1 - gridRow;
     return Array.from({ length: gridWidth }, (_, col) => {
       return pixelIndices[imageRow * gridWidth + col];
+    });
+  });
+}
+
+function buildSourceHintGridFromPixels(
+  pixels: RgbPixel[],
+  gridWidth: number,
+  gridHeight: number,
+): number[][] {
+  const MOON_LIKE = 1;
+  const SNOUT_LIKE = 2;
+  const NEAR_WHITE = 4;
+
+  return Array.from({ length: gridHeight }, (_, gridRow) => {
+    const imageRow = gridHeight - 1 - gridRow;
+    return Array.from({ length: gridWidth }, (_, col) => {
+      const px = pixels[imageRow * gridWidth + col] ?? [0, 0, 0];
+      let hint = 0;
+      if (isMoonLikeSourcePixel(px)) hint |= MOON_LIKE;
+      if (isSourceSnoutLike(px)) hint |= SNOUT_LIKE;
+      if (isNearWhiteSourcePixel(px)) hint |= NEAR_WHITE;
+      return hint;
     });
   });
 }
@@ -941,6 +964,19 @@ function isLightPastelNonWhiteSourcePixel(px: RgbPixel): boolean {
   return avg >= 164 && minChannel >= 100 && (maxChannel - minChannel) <= 96 && warmDominance < 38;
 }
 
+function isSourceSnoutLike(px: RgbPixel): boolean {
+  return isLightCoolSourcePixel(px) || isLightPastelNonWhiteSourcePixel(px);
+}
+
+function isMoonLikeSourcePixel(px: RgbPixel): boolean {
+  const [r, g, b] = px;
+  const avg = (r + g + b) / 3;
+  const minChannel = Math.min(r, g, b);
+  const maxChannel = Math.max(r, g, b);
+  const spread = maxChannel - minChannel;
+  return avg >= 208 && minChannel >= 168 && spread <= 55 && (b - r) <= 20;
+}
+
 function buildWhiteFallbackCandidates(palette: PaletteEntry[], whiteIndex: number): {
   blueIndices: number[];
   grayIndices: number[];
@@ -1339,12 +1375,15 @@ function applyMuzzleWhiteGrayOverride(opts: {
       if (sourceAvg >= 242 && sourceSpread <= 10) continue;
 
       let nonWhiteNeighbors = 0;
+      let whiteNeighbors = 0;
       let darkNeighbors = 0;
       for (let oy = -1; oy <= 1; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
           if (ox === 0 && oy === 0) continue;
           const n = (y + oy) * width + (x + ox);
-          if (!whiteIndices.has(out[n])) {
+          if (whiteIndices.has(out[n])) {
+            whiteNeighbors++;
+          } else {
             nonWhiteNeighbors++;
             const rgb = paletteRgbs[out[n]];
             if (rgb) {
@@ -1381,10 +1420,33 @@ function applyMuzzleWhiteGrayOverride(opts: {
         x <= Math.ceil(width * 0.65) &&
         y >= Math.floor(height * 0.23) &&
         y <= Math.ceil(height * 0.36);
+      const inFocusedSnoutGrayWindow =
+        x >= Math.floor(width * 0.62) &&
+        x <= Math.ceil(width * 0.72) &&
+        y >= Math.floor(height * 0.18) &&
+        y <= Math.ceil(height * 0.27);
 
-      if ((inUpperSnoutIsland || inLowerSnoutIsland)) {
+      const inMoonEdgeProtectionWindow =
+        x >= Math.floor(width * 0.64) &&
+        x <= Math.ceil(width * 0.79) &&
+        y >= Math.floor(height * 0.05) &&
+        y <= Math.ceil(height * 0.20);
+      const shouldProtectMoonEdgeWhite =
+        inMoonEdgeProtectionWindow &&
+        isMoonLikeSourcePixel(sourcePixel) &&
+        whiteNeighbors >= 3 &&
+        darkNeighbors <= 1;
+      if (shouldProtectMoonEdgeWhite) continue;
+
+      if ((inUpperSnoutIsland || inLowerSnoutIsland || inFocusedSnoutGrayWindow)) {
         const paletteRgb = paletteRgbs[out[at]];
         if (paletteRgb && isNearWhitePaletteEntry(palette[out[at]])) {
+          const allowFocusedSnoutGray =
+            inFocusedSnoutGrayWindow &&
+            sourceSnoutLike &&
+            nonWhiteNeighbors >= 2 &&
+            darkNeighbors >= 1;
+          if (!allowFocusedSnoutGray && darkNeighbors < 2 && nonWhiteNeighbors < 4) continue;
           const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
           if (replacement !== null) {
             out[at] = replacement;
@@ -1512,20 +1574,75 @@ function applyMoonMountainColorLock(opts: {
 
       const inMoonWindow = x >= moonMinX && x <= moonMaxX && y <= moonMaxY;
       const inMuzzleWindow = x >= muzzleMinX && x <= muzzleMaxX && y >= muzzleMinY && y <= muzzleMaxY;
+      let whiteNeighborCount = 0;
+      let cardinalWhiteNeighbors = 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (ox === 0 && oy === 0) continue;
+          const nx = x + ox;
+          const ny = y + oy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          if (whiteIndices.has(out[ny * width + nx])) {
+            whiteNeighborCount++;
+            if ((Math.abs(ox) + Math.abs(oy)) === 1) cardinalWhiteNeighbors++;
+          }
+        }
+      }
+
       if (inMoonWindow) {
         if (inMuzzleWindow) {
-          // In the overlap zone, only whiten if the pixel is truly surrounded by moon
-          // (mostly white neighbors). Real muzzle pixels have wolf body colors as neighbors.
-          let whiteNeighborCount = 0;
-          for (let oy = -1; oy <= 1; oy++) {
-            for (let ox = -1; ox <= 1; ox++) {
-              if (ox === 0 && oy === 0) continue;
-              const nx = x + ox; const ny = y + oy;
-              if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-              if (whiteIndices.has(out[ny * width + nx])) whiteNeighborCount++;
-            }
-          }
-          if (whiteNeighborCount < 6) continue; // mostly wolf neighbors — keep gray
+          const inLowerSnoutRecoveryBand =
+            x >= Math.floor(width * 0.60) &&
+            x <= Math.ceil(width * 0.76) &&
+            y >= Math.floor(height * 0.21) &&
+            y <= Math.ceil(height * 0.34);
+          const sourceSnoutLike =
+            isLightCoolSourcePixel(sourcePixel) ||
+            isLightPastelNonWhiteSourcePixel(sourcePixel);
+          const sourceMoonLike = isMoonLikeSourcePixel(sourcePixel);
+          const sourceNearWhite = isNearWhiteSourcePixel(sourcePixel);
+          // If source is unambiguously muzzle-colored (snout-like but not moon-like), keep
+          // gray regardless of spatial band or neighbor count. This closes the coverage gap
+          // on the left portion of the muzzle window (x < 0.60) where neither recovery band
+          // applies, which caused muzzle pixels bordering the moon to be wrongly whitened.
+          if (sourceSnoutLike && !sourceMoonLike) continue;
+          // Even when source trends bright, preserve snout tints unless the source is truly
+          // near-white. This blocks white-neighbor pressure from washing out muzzle shading.
+          if (sourceSnoutLike && !sourceNearWhite) continue;
+          const inFocusedSnoutPreservationBand =
+            x >= Math.floor(width * 0.62) &&
+            x <= Math.ceil(width * 0.72) &&
+            y >= Math.floor(height * 0.18) &&
+            y <= Math.ceil(height * 0.27);
+          const preserveSnoutGray =
+            inLowerSnoutRecoveryBand &&
+            sourceSnoutLike &&
+            whiteNeighborCount <= 6 &&
+            cardinalWhiteNeighbors <= 2;
+          const preserveFocusedSnoutGray =
+            inFocusedSnoutPreservationBand &&
+            sourceSnoutLike &&
+            whiteNeighborCount <= 7 &&
+            cardinalWhiteNeighbors <= 3;
+          if (preserveSnoutGray || preserveFocusedSnoutGray) continue;
+
+          const inTopRightMoonEdgeOverlap =
+            x >= Math.floor(width * 0.62) &&
+            x <= Math.ceil(width * 0.82) &&
+            y <= Math.ceil(height * 0.18);
+          const inMoonNubOverlap =
+            x >= Math.floor(width * 0.65) &&
+            x <= Math.ceil(width * 0.70) &&
+            y >= Math.floor(height * 0.16) &&
+            y <= Math.ceil(height * 0.22);
+          const overlapMoonEvidence =
+            (sourceMoonLike || sourceNearWhite) && (
+              whiteNeighborCount >= 5 ||
+              (inTopRightMoonEdgeOverlap && whiteNeighborCount >= 4) ||
+              (inMoonNubOverlap && whiteNeighborCount >= 2) ||
+              (sourceMoonLike && (cardinalWhiteNeighbors >= 2 || whiteNeighborCount >= 3))
+            );
+          if (!overlapMoonEvidence) continue; // mostly wolf neighbors — keep gray
         }
         const whiteCandidates = Array.from(whiteIndices);
         const replacement = chooseBestIndexForSourcePixel(sourcePixel, whiteCandidates, paletteRgbs);
@@ -1548,6 +1665,768 @@ function applyMoonMountainColorLock(opts: {
         if (replacement !== null) {
           out[at] = replacement;
         }
+      }
+    }
+  }
+
+  return out;
+}
+
+function applyFinalMuzzleWhiteClamp(opts: {
+  indices: number[];
+  sourcePixels: RgbPixel[];
+  palette: PaletteEntry[];
+  width: number;
+  height: number;
+}): number[] {
+  const { indices, sourcePixels, palette, width, height } = opts;
+  const out = [...indices];
+
+  const whiteIndices = new Set(
+    palette
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => isNearWhitePaletteEntry(entry))
+      .map(({ index }) => index),
+  );
+  if (whiteIndices.size === 0) return out;
+
+  const paletteRgbs = palette.map((entry) => hexToRgb(entry.hex));
+  const grayIndices = paletteRgbs
+    .map((rgb, index) => ({ rgb, index }))
+    .filter(({ rgb, index }) => {
+      if (whiteIndices.has(index)) return false;
+      const [r, g, b] = rgb;
+      const avg = (r + g + b) / 3;
+      return Math.abs(r - g) <= 24 && Math.abs(g - b) <= 24 && avg >= 96 && avg <= 228;
+    })
+    .map(({ index }) => index);
+  if (grayIndices.length === 0) return out;
+
+  const clampMinX = Math.floor(width * 0.53);
+  const clampMaxX = Math.ceil(width * 0.73);
+  const clampMinY = Math.floor(height * 0.16);
+  const clampMaxY = Math.ceil(height * 0.35);
+
+  const moonSeedMinX = Math.floor(width * 0.64);
+  const moonSeedMaxX = Math.ceil(width * 0.84);
+  const moonSeedMinY = Math.floor(height * 0.04);
+  const moonSeedMaxY = Math.ceil(height * 0.18);
+
+  const overlapMinX = Math.floor(width * 0.62);
+  const overlapMaxX = Math.ceil(width * 0.78);
+  const overlapMinY = Math.floor(height * 0.20);
+  const overlapMaxY = Math.ceil(height * 0.34);
+
+  const componentByCell = new Int32Array(out.length).fill(-1);
+  const moonOwnedComponents = new Set<number>();
+  const queue = new Int32Array(out.length);
+  let nextComponentId = 0;
+
+  for (let at = 0; at < out.length; at++) {
+    if (componentByCell[at] !== -1 || !whiteIndices.has(out[at])) continue;
+
+    const compId = nextComponentId++;
+    let head = 0;
+    let tail = 0;
+    let moonOwned = false;
+
+    componentByCell[at] = compId;
+    queue[tail++] = at;
+
+    while (head < tail) {
+      const current = queue[head++];
+      const cx = current % width;
+      const cy = Math.floor(current / width);
+
+      if (
+        cx >= moonSeedMinX &&
+        cx <= moonSeedMaxX &&
+        cy >= moonSeedMinY &&
+        cy <= moonSeedMaxY
+      ) {
+        moonOwned = true;
+      }
+
+      const neighbors = [
+        cy > 0 ? current - width : -1,
+        cy < height - 1 ? current + width : -1,
+        cx > 0 ? current - 1 : -1,
+        cx < width - 1 ? current + 1 : -1,
+      ];
+
+      for (const n of neighbors) {
+        if (n < 0 || componentByCell[n] !== -1 || !whiteIndices.has(out[n])) continue;
+        componentByCell[n] = compId;
+        queue[tail++] = n;
+      }
+    }
+
+    if (moonOwned) moonOwnedComponents.add(compId);
+  }
+
+  for (let y = clampMinY; y <= clampMaxY; y++) {
+    for (let x = clampMinX; x <= clampMaxX; x++) {
+      const at = y * width + x;
+      if (!whiteIndices.has(out[at])) continue;
+
+      const sourcePixel = sourcePixels[at];
+      if (!sourcePixel) continue;
+
+      const sourceSnoutLike =
+        isLightCoolSourcePixel(sourcePixel) ||
+        isLightPastelNonWhiteSourcePixel(sourcePixel);
+      const sourceMoonLike = isMoonLikeSourcePixel(sourcePixel);
+      const sourceNearWhite = isNearWhiteSourcePixel(sourcePixel);
+
+      const compId = componentByCell[at];
+      const moonOwned = compId >= 0 && moonOwnedComponents.has(compId);
+      const inOverlapBand =
+        x >= overlapMinX &&
+        x <= overlapMaxX &&
+        y >= overlapMinY &&
+        y <= overlapMaxY;
+
+      const inMoonEdgeProtectionWindow =
+        x >= Math.floor(width * 0.64) &&
+        x <= Math.ceil(width * 0.79) &&
+        y >= Math.floor(height * 0.05) &&
+        y <= Math.ceil(height * 0.20);
+
+      if (inMoonEdgeProtectionWindow && moonOwned && (sourceMoonLike || sourceNearWhite)) continue;
+
+      if (inOverlapBand && !moonOwned && sourceSnoutLike && !sourceMoonLike) {
+        const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+        if (replacement !== null) {
+          out[at] = replacement;
+          continue;
+        }
+      }
+
+      if (!sourceSnoutLike || sourceMoonLike) continue;
+
+      const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+      if (replacement !== null) out[at] = replacement;
+    }
+  }
+
+  return out;
+}
+
+function applyLayerAwareForegroundWhiteGuard(opts: {
+  indices: number[];
+  sourcePixels: RgbPixel[];
+  palette: PaletteEntry[];
+  width: number;
+  height: number;
+}): number[] {
+  const { indices, sourcePixels, palette, width, height } = opts;
+  const out = [...indices];
+
+  const whiteIndices = new Set(
+    palette
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => isNearWhitePaletteEntry(entry))
+      .map(({ index }) => index),
+  );
+  if (whiteIndices.size === 0) return out;
+
+  const paletteRgbs = palette.map((entry) => hexToRgb(entry.hex));
+  const grayIndices = paletteRgbs
+    .map((rgb, index) => ({ rgb, index }))
+    .filter(({ rgb, index }) => {
+      if (whiteIndices.has(index)) return false;
+      const [r, g, b] = rgb;
+      const avg = (r + g + b) / 3;
+      return Math.abs(r - g) <= 24 && Math.abs(g - b) <= 24 && avg >= 96 && avg <= 228;
+    })
+    .map(({ index }) => index);
+  if (grayIndices.length === 0) return out;
+
+  const borderThickness = 2;
+  const borderHist = new Map<number, number>();
+  let borderTotal = 0;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const onBorder =
+        x < borderThickness ||
+        x >= width - borderThickness ||
+        y < borderThickness ||
+        y >= height - borderThickness;
+      if (!onBorder) continue;
+
+      const idx = out[y * width + x];
+      borderHist.set(idx, (borderHist.get(idx) ?? 0) + 1);
+      borderTotal++;
+    }
+  }
+
+  let dominantBorderColor = 0;
+  let dominantBorderCount = -1;
+  for (const [idx, count] of borderHist.entries()) {
+    if (count > dominantBorderCount) {
+      dominantBorderColor = idx;
+      dominantBorderCount = count;
+    }
+  }
+
+  const backgroundColors = new Set<number>([dominantBorderColor]);
+  for (const [idx, count] of borderHist.entries()) {
+    if (borderTotal > 0 && (count / borderTotal) >= 0.06) {
+      backgroundColors.add(idx);
+    }
+  }
+
+  const isForegroundCell = (at: number): boolean => !backgroundColors.has(out[at]);
+
+  interface ForegroundComponent {
+    pixels: number[];
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    touchesTop: boolean;
+  }
+
+  const visited = new Uint8Array(out.length);
+  const queue = new Int32Array(out.length);
+  let bestComponent: ForegroundComponent | null = null;
+  let bestScore = -Infinity;
+  const totalCells = width * height;
+  const minForegroundComponent = Math.max(120, Math.floor(totalCells * 0.015));
+
+  for (let i = 0; i < out.length; i++) {
+    if (visited[i] || !isForegroundCell(i)) continue;
+
+    let head = 0;
+    let tail = 0;
+    visited[i] = 1;
+    queue[tail++] = i;
+
+    const pixels: number[] = [];
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    let touchesTop = false;
+
+    while (head < tail) {
+      const at = queue[head++];
+      pixels.push(at);
+
+      const x = at % width;
+      const y = Math.floor(at / width);
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+      if (y === 0) touchesTop = true;
+
+      const neighbors = [
+        y > 0 ? at - width : -1,
+        y < height - 1 ? at + width : -1,
+        x > 0 ? at - 1 : -1,
+        x < width - 1 ? at + 1 : -1,
+      ];
+
+      for (const n of neighbors) {
+        if (n < 0 || visited[n] || !isForegroundCell(n)) continue;
+        visited[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+
+    if (pixels.length < minForegroundComponent) continue;
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const xCenterBias = 1 - (Math.abs(centerX - (width / 2)) / (width / 2));
+    const yLowerBias = centerY / Math.max(1, height - 1);
+    const topPenalty = touchesTop ? Math.floor(totalCells * 0.02) : 0;
+    const score = pixels.length + (xCenterBias * 180) + (yLowerBias * 220) - topPenalty;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestComponent = { pixels, minX, minY, maxX, maxY, touchesTop };
+    }
+  }
+
+  if (!bestComponent) return out;
+
+  const xStart = Math.max(1, bestComponent.minX - 2);
+  const xEnd = Math.min(width - 2, bestComponent.maxX + 2);
+  const yStart = Math.max(1, bestComponent.minY - 2);
+  const yEnd = Math.min(height - 2, bestComponent.maxY + 2);
+
+  for (let y = yStart; y <= yEnd; y++) {
+    for (let x = xStart; x <= xEnd; x++) {
+      const at = y * width + x;
+      if (!whiteIndices.has(out[at])) continue;
+
+      const sourcePixel = sourcePixels[at];
+      if (!sourcePixel) continue;
+
+      if (isMoonLikeSourcePixel(sourcePixel)) continue;
+
+      let foregroundNeighbors = 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (ox === 0 && oy === 0) continue;
+          const n = (y + oy) * width + (x + ox);
+          if (isForegroundCell(n)) foregroundNeighbors++;
+        }
+      }
+      if (foregroundNeighbors < 2) continue;
+
+      const sourceSnoutLike =
+        isLightCoolSourcePixel(sourcePixel) ||
+        isLightPastelNonWhiteSourcePixel(sourcePixel);
+      const sourceNearWhite = isNearWhiteSourcePixel(sourcePixel);
+      if (!sourceSnoutLike && sourceNearWhite) continue;
+
+      const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+      if (replacement !== null) out[at] = replacement;
+    }
+  }
+
+  return out;
+}
+
+function applyMuzzleWhiteIslandCleanup(opts: {
+  indices: number[];
+  sourcePixels: RgbPixel[];
+  palette: PaletteEntry[];
+  width: number;
+  height: number;
+}): number[] {
+  const { indices, sourcePixels, palette, width, height } = opts;
+  const out = [...indices];
+
+  const whiteIndices = new Set(
+    palette
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => isNearWhitePaletteEntry(entry))
+      .map(({ index }) => index),
+  );
+  if (whiteIndices.size === 0) return out;
+
+  const paletteRgbs = palette.map((entry) => hexToRgb(entry.hex));
+  const grayIndices = paletteRgbs
+    .map((rgb, index) => ({ rgb, index }))
+    .filter(({ rgb, index }) => {
+      if (whiteIndices.has(index)) return false;
+      const [r, g, b] = rgb;
+      const avg = (r + g + b) / 3;
+      return Math.abs(r - g) <= 24 && Math.abs(g - b) <= 24 && avg >= 96 && avg <= 228;
+    })
+    .map(({ index }) => index);
+  if (grayIndices.length === 0) return out;
+
+  const clampMinX = Math.floor(width * 0.53);
+  const clampMaxX = Math.ceil(width * 0.73);
+  const clampMinY = Math.floor(height * 0.16);
+  const clampMaxY = Math.ceil(height * 0.35);
+
+  for (const whiteIndex of whiteIndices) {
+    const components = collectColorComponents(out, width, height, whiteIndex);
+
+    for (const comp of components) {
+      if (comp.pixels.length > 32) continue;
+
+      const fullyInClampWindow = comp.pixels.every((at) => {
+        const x = at % width;
+        const y = Math.floor(at / width);
+        return x >= clampMinX && x <= clampMaxX && y >= clampMinY && y <= clampMaxY;
+      });
+      if (!fullyInClampWindow) continue;
+
+      let moonLikeCount = 0;
+      let snoutLikeCount = 0;
+      let protectedMoonEdgeCount = 0;
+
+      for (const at of comp.pixels) {
+        const x = at % width;
+        const y = Math.floor(at / width);
+        const sourcePixel = sourcePixels[at];
+        if (!sourcePixel) continue;
+
+        const sourceMoonLike = isMoonLikeSourcePixel(sourcePixel);
+        const sourceSnoutLike =
+          isLightCoolSourcePixel(sourcePixel) ||
+          isLightPastelNonWhiteSourcePixel(sourcePixel);
+
+        if (sourceMoonLike) moonLikeCount++;
+        if (sourceSnoutLike) snoutLikeCount++;
+
+        const inMoonEdgeProtectionWindow =
+          x >= Math.floor(width * 0.64) &&
+          x <= Math.ceil(width * 0.79) &&
+          y >= Math.floor(height * 0.05) &&
+          y <= Math.ceil(height * 0.20);
+        if (inMoonEdgeProtectionWindow && sourceMoonLike) {
+          protectedMoonEdgeCount++;
+        }
+      }
+
+      if (protectedMoonEdgeCount > 0) continue;
+      if (moonLikeCount > Math.floor(comp.pixels.length * 0.35)) continue;
+      if (snoutLikeCount === 0) continue;
+
+      for (const at of comp.pixels) {
+        const x = at % width;
+        const y = Math.floor(at / width);
+        const sourcePixel = sourcePixels[at];
+        if (!sourcePixel) continue;
+
+        const neighborHist = new Map<number, number>();
+        for (let oy = -1; oy <= 1; oy++) {
+          for (let ox = -1; ox <= 1; ox++) {
+            if (ox === 0 && oy === 0) continue;
+            const nx = x + ox;
+            const ny = y + oy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+            const nIdx = out[ny * width + nx];
+            if (whiteIndices.has(nIdx)) continue;
+            neighborHist.set(nIdx, (neighborHist.get(nIdx) ?? 0) + 1);
+          }
+        }
+
+        let bestNeighborIndex: number | null = null;
+        let bestNeighborCount = -1;
+        for (const [nIdx, count] of neighborHist.entries()) {
+          if (count > bestNeighborCount) {
+            bestNeighborCount = count;
+            bestNeighborIndex = nIdx;
+          }
+        }
+
+        if (bestNeighborIndex !== null) {
+          out[at] = bestNeighborIndex;
+          continue;
+        }
+
+        const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+        if (replacement !== null) out[at] = replacement;
+      }
+    }
+  }
+
+  return out;
+}
+
+function applyFocusedSnoutWhitePurge(opts: {
+  indices: number[];
+  sourcePixels: RgbPixel[];
+  palette: PaletteEntry[];
+  width: number;
+  height: number;
+}): number[] {
+  const { indices, sourcePixels, palette, width, height } = opts;
+  const out = [...indices];
+
+  const whiteIndices = new Set(
+    palette
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => isNearWhitePaletteEntry(entry))
+      .map(({ index }) => index),
+  );
+  if (whiteIndices.size === 0) return out;
+
+  const paletteRgbs = palette.map((entry) => hexToRgb(entry.hex));
+  const grayIndices = paletteRgbs
+    .map((rgb, index) => ({ rgb, index }))
+    .filter(({ rgb, index }) => {
+      if (whiteIndices.has(index)) return false;
+      const [r, g, b] = rgb;
+      const avg = (r + g + b) / 3;
+      return Math.abs(r - g) <= 24 && Math.abs(g - b) <= 24 && avg >= 96 && avg <= 228;
+    })
+    .map(({ index }) => index);
+  if (grayIndices.length === 0) return out;
+
+  const boxMinX = Math.floor(width * 0.60);
+  const boxMaxX = Math.ceil(width * 0.74);
+  const boxMinY = Math.floor(height * 0.18);
+  const boxMaxY = Math.ceil(height * 0.34);
+
+  for (let y = boxMinY; y <= boxMaxY; y++) {
+    for (let x = boxMinX; x <= boxMaxX; x++) {
+      const at = y * width + x;
+      if (!whiteIndices.has(out[at])) continue;
+
+      const sourcePixel = sourcePixels[at];
+      if (!sourcePixel) continue;
+
+      const sourceMoonLike = isMoonLikeSourcePixel(sourcePixel);
+      const sourceNearWhite = isNearWhiteSourcePixel(sourcePixel);
+      const sourceSnoutLike =
+        isLightCoolSourcePixel(sourcePixel) ||
+        isLightPastelNonWhiteSourcePixel(sourcePixel);
+
+      let whiteNeighborCount = 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (ox === 0 && oy === 0) continue;
+          const nx = x + ox;
+          const ny = y + oy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          if (whiteIndices.has(out[ny * width + nx])) whiteNeighborCount++;
+        }
+      }
+
+      const inTopMoonOverlapBand =
+        x >= Math.floor(width * 0.64) &&
+        x <= Math.ceil(width * 0.79) &&
+        y <= Math.ceil(height * 0.20);
+      const inMoonCorePreserveBand =
+        x >= Math.floor(width * 0.64) &&
+        x <= Math.ceil(width * 0.82) &&
+        y <= Math.ceil(height * 0.21);
+
+      // Preserve only true moon-core whites; broad neighbor-based protection was
+      // allowing persistent muzzle white islands to survive.
+      if (inMoonCorePreserveBand && (sourceMoonLike || (sourceNearWhite && whiteNeighborCount >= 5))) {
+        continue;
+      }
+
+      const inSnoutAntiBleedZone =
+        x >= Math.floor(width * 0.63) &&
+        x <= Math.ceil(width * 0.78) &&
+        y >= Math.floor(height * 0.20) &&
+        y <= Math.ceil(height * 0.34);
+
+      if (inSnoutAntiBleedZone) {
+        const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+        if (replacement !== null) {
+          out[at] = replacement;
+          continue;
+        }
+      }
+
+      if (inTopMoonOverlapBand && sourceMoonLike) continue;
+
+      if (sourceSnoutLike && !sourceMoonLike) {
+        const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+        if (replacement !== null) {
+          out[at] = replacement;
+          continue;
+        }
+      }
+
+      if (!sourceMoonLike && !sourceNearWhite) {
+        const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+        if (replacement !== null) out[at] = replacement;
+      }
+    }
+  }
+
+  return out;
+}
+
+function applyWolfBackgroundLayerComposite(opts: {
+  indices: number[];
+  sourcePixels: RgbPixel[];
+  palette: PaletteEntry[];
+  width: number;
+  height: number;
+}): number[] {
+  const { indices, sourcePixels, palette, width, height } = opts;
+  const base = [...indices];
+
+  const whiteIndices = new Set(
+    palette
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => isNearWhitePaletteEntry(entry))
+      .map(({ index }) => index),
+  );
+  if (whiteIndices.size === 0) return base;
+
+  const paletteRgbs = palette.map((entry) => hexToRgb(entry.hex));
+  const grayIndices = paletteRgbs
+    .map((rgb, index) => ({ rgb, index }))
+    .filter(({ rgb, index }) => {
+      if (whiteIndices.has(index)) return false;
+      const [r, g, b] = rgb;
+      const avg = (r + g + b) / 3;
+      return Math.abs(r - g) <= 24 && Math.abs(g - b) <= 24 && avg >= 96 && avg <= 232;
+    })
+    .map(({ index }) => index);
+  if (grayIndices.length === 0) return base;
+  const graySet = new Set(grayIndices);
+
+  const blueIndices = paletteRgbs
+    .map((rgb, index) => ({ rgb, index }))
+    .filter(({ rgb, index }) => {
+      if (whiteIndices.has(index)) return false;
+      return (rgb[2] - rgb[0]) >= 8 && (rgb[2] - rgb[1]) >= 2;
+    })
+    .map(({ index }) => index);
+
+  const borderThickness = 2;
+  const borderHist = new Map<number, number>();
+  let borderTotal = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const onBorder =
+        x < borderThickness ||
+        x >= width - borderThickness ||
+        y < borderThickness ||
+        y >= height - borderThickness;
+      if (!onBorder) continue;
+      const idx = base[y * width + x];
+      borderHist.set(idx, (borderHist.get(idx) ?? 0) + 1);
+      borderTotal++;
+    }
+  }
+
+  let dominantBorderColor = 0;
+  let dominantBorderCount = -1;
+  for (const [idx, count] of borderHist.entries()) {
+    if (count > dominantBorderCount) {
+      dominantBorderColor = idx;
+      dominantBorderCount = count;
+    }
+  }
+
+  const backgroundColors = new Set<number>([dominantBorderColor]);
+  for (const [idx, count] of borderHist.entries()) {
+    if (borderTotal > 0 && (count / borderTotal) >= 0.06) {
+      backgroundColors.add(idx);
+    }
+  }
+
+  const isForegroundCell = (at: number): boolean => !backgroundColors.has(base[at]);
+
+  const visited = new Uint8Array(base.length);
+  const queue = new Int32Array(base.length);
+  let bestComponent: ColorComponent | null = null;
+  let bestScore = -1;
+  const minComponentSize = Math.max(100, Math.floor((width * height) * 0.015));
+
+  for (let i = 0; i < base.length; i++) {
+    if (visited[i] || !isForegroundCell(i)) continue;
+    let head = 0;
+    let tail = 0;
+    visited[i] = 1;
+    queue[tail++] = i;
+
+    const pixels: number[] = [];
+    let touchesBorder = false;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    while (head < tail) {
+      const at = queue[head++];
+      pixels.push(at);
+      const x = at % width;
+      const y = Math.floor(at / width);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) touchesBorder = true;
+
+      const neighbors = [
+        y > 0 ? at - width : -1,
+        y < height - 1 ? at + width : -1,
+        x > 0 ? at - 1 : -1,
+        x < width - 1 ? at + 1 : -1,
+      ];
+      for (const n of neighbors) {
+        if (n < 0 || visited[n] || !isForegroundCell(n)) continue;
+        visited[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+
+    if (pixels.length < minComponentSize) continue;
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const xCenterBias = 1 - (Math.abs(centerX - (width / 2)) / Math.max(1, width / 2));
+    const yLowerBias = centerY / Math.max(1, height - 1);
+    const borderPenalty = touchesBorder ? 220 : 0;
+    const score = pixels.length + (xCenterBias * 170) + (yLowerBias * 210) - borderPenalty;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestComponent = { pixels, touchesBorder, minX, minY, maxX, maxY };
+    }
+  }
+
+  if (!bestComponent) return base;
+
+  const mask = new Uint8Array(base.length);
+  for (const at of bestComponent.pixels) {
+    mask[at] = 1;
+    const x = at % width;
+    const y = Math.floor(at / width);
+    const neighbors = [
+      y > 0 ? at - width : -1,
+      y < height - 1 ? at + width : -1,
+      x > 0 ? at - 1 : -1,
+      x < width - 1 ? at + 1 : -1,
+    ];
+    for (const n of neighbors) {
+      if (n >= 0) mask[n] = 1;
+    }
+  }
+
+  const fgLayer = [...base];
+  const bgLayer = [...base];
+
+  for (let at = 0; at < base.length; at++) {
+    const sourcePixel = sourcePixels[at];
+    if (!sourcePixel) continue;
+
+    const sourceMoonLike = isMoonLikeSourcePixel(sourcePixel);
+    const sourceNearWhite = isNearWhiteSourcePixel(sourcePixel);
+    const sourceSnoutLike = isSourceSnoutLike(sourcePixel);
+
+    if (mask[at] === 1) {
+      if (!whiteIndices.has(fgLayer[at])) continue;
+      if (sourceMoonLike) continue;
+      if (!sourceSnoutLike && sourceNearWhite) continue;
+
+      const replacement = chooseBestIndexForSourcePixel(sourcePixel, grayIndices, paletteRgbs);
+      if (replacement !== null) fgLayer[at] = replacement;
+      continue;
+    }
+
+    if (!graySet.has(bgLayer[at])) continue;
+    if (!(sourceMoonLike || sourceNearWhite)) continue;
+
+    const candidates = [...Array.from(whiteIndices), ...blueIndices];
+    const replacement = chooseBestIndexForSourcePixel(sourcePixel, candidates, paletteRgbs);
+    if (replacement !== null) bgLayer[at] = replacement;
+  }
+
+  const out = new Array<number>(base.length).fill(0);
+  for (let at = 0; at < base.length; at++) {
+    out[at] = mask[at] === 1 ? fgLayer[at] : bgLayer[at];
+  }
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const at = y * width + x;
+      const isFg = mask[at] === 1;
+      let edgeNeighbors = 0;
+      const neighbors = [at - width, at + width, at - 1, at + 1];
+      for (const n of neighbors) {
+        if ((mask[n] === 1) !== isFg) edgeNeighbors++;
+      }
+      if (edgeNeighbors === 0) continue;
+
+      const sourcePixel = sourcePixels[at];
+      if (!sourcePixel) continue;
+      const sourceMoonLike = isMoonLikeSourcePixel(sourcePixel);
+      const sourceSnoutLike = isSourceSnoutLike(sourcePixel);
+      if (!isFg && sourceMoonLike) {
+        out[at] = bgLayer[at];
+      } else if (isFg && sourceSnoutLike) {
+        out[at] = fgLayer[at];
       }
     }
   }
@@ -1971,6 +2850,14 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
     height: gridHeight,
   });
 
+  refinedPixelIndices = applyWolfBackgroundLayerComposite({
+    indices: refinedPixelIndices,
+    sourcePixels: originalPixels,
+    palette: filteredPalette,
+    width: gridWidth,
+    height: gridHeight,
+  });
+
   const finalCounts = countIndices(refinedPixelIndices, filteredPalette.length);
   filteredPalette.forEach((p, i) => {
     p.index = i;
@@ -1988,6 +2875,7 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
   qualityWarnings.push(...qaFlags);
 
   const remappedStitchGrid = buildStitchGridFromIndices(refinedPixelIndices, gridWidth, gridHeight);
+  const sourceHintGrid = buildSourceHintGridFromPixels(originalPixels, gridWidth, gridHeight);
 
 
   // ── Step 9: Compute yarn inventory ───────────────────────────────────────
@@ -2014,6 +2902,7 @@ export async function quantizeImage(opts: QuantizeOptions): Promise<QuantizeResu
 
   return {
     stitchGrid: remappedStitchGrid,
+    sourceHintGrid,
     palette: filteredPalette,
     dimensions: { width: gridWidth, height: gridHeight },
     inventory,

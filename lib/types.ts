@@ -54,6 +54,8 @@ export interface YarnInventoryEntry {
 export interface PatternData {
   patternId: string;
   stitchGrid: number[][];
+  // Optional per-cell source-class hints (bit flags) aligned with stitchGrid rows.
+  sourceHintGrid?: number[][];
   palette: PaletteEntry[];
   dimensions: { width: number; height: number };
   inventory: YarnInventoryEntry[];
@@ -73,7 +75,7 @@ export interface PatternData {
 }
 
 export interface StoredPattern extends PatternData {
-  pdfBlobUrl: string;
+  pdfBlobUrl?: string;
 }
 
 export interface StoredCheckout {
@@ -81,6 +83,7 @@ export interface StoredCheckout {
   stripeSessionId: string;
   status: 'pending' | 'complete' | 'expired';
   downloadToken: string | null;
+  editToken?: string | null;
   createdAt: string;
 }
 

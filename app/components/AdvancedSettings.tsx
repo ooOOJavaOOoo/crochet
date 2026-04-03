@@ -1,6 +1,6 @@
 'use client';
 
-import type { RenderMode, StitchType, YarnWeight, OutputType } from '@/lib/types';
+import type { RenderMode, StitchType, YarnWeight } from '@/lib/types';
 import type { Action } from '@/app/page';
 import {
   YARN_WEIGHT_CONFIGS,
@@ -17,6 +17,7 @@ interface YarnColorOption {
 interface AdvancedSettingsProps {
   renderMode: RenderMode;
   flattenBackgroundRegions: boolean;
+  colorCount: number;
   stitchType: StitchType;
   yarnWeight: YarnWeight;
   hookSize: string;
@@ -29,18 +30,10 @@ interface AdvancedSettingsProps {
   onDispatch: (action: Action) => void;
 }
 
-const YARN_BRANDS = [
-  { value: 'red-heart', label: 'Red Heart' },
-  { value: 'bernat', label: 'Bernat' },
-  { value: 'lion-brand', label: 'Lion Brand' },
-  { value: 'caron', label: 'Caron' },
-  { value: 'i-love-this-yarn', label: 'I Love this Yarn' },
-  { value: 'yarn-bee', label: 'Yarn Bee (DK)' },
-];
-
 export default function AdvancedSettings({
   renderMode,
   flattenBackgroundRegions,
+  colorCount,
   stitchType,
   yarnWeight,
   hookSize,
@@ -199,24 +192,31 @@ export default function AdvancedSettings({
           </div>
         )}
 
-        {/* Yarn Brand */}
-        <div>
-          <label htmlFor="brand-adv" className="form-label">
-            Yarn brand
+        {/* Number of Colors */}
+        <div className="rounded-[1.5rem] bg-gradient-to-r from-[rgba(184,92,56,0.08)] via-[rgba(216,158,88,0.12)] to-[rgba(46,94,138,0.08)] px-4 py-4">
+          <label htmlFor="color-count-slider" className="form-label mb-2">
+            Number of colors: <span className="text-[color:var(--foreground)]">{colorCount}</span>
           </label>
-          <select
-            id="brand-adv"
-            value={brandId}
-            onChange={(event) => onDispatch({ type: 'SetBrandId', brandId: event.target.value })}
-            className="form-input"
-            required
-          >
-            {YARN_BRANDS.map((brand) => (
-              <option key={brand.value} value={brand.value}>
-                {brand.label}
-              </option>
-            ))}
-          </select>
+          <input
+            id="color-count-slider"
+            type="range"
+            min={2}
+            max={25}
+            value={colorCount}
+            onChange={(event) =>
+              onDispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
+            }
+            className="color-slider w-full"
+            aria-valuenow={colorCount}
+            aria-valuemin={2}
+            aria-valuemax={25}
+            aria-label="Number of colors"
+          />
+          {colorCount <= 4 && (
+            <p className="mt-3 rounded-2xl border border-[color:var(--border-strong)] bg-white/70 px-3 py-3 text-xs leading-5 text-[color:var(--foreground)]">
+              Very low color counts can flatten details. Increase the slider if the preview feels too simplified.
+            </p>
+          )}
         </div>
 
         {/* Yarn Colors */}

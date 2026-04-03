@@ -101,6 +101,7 @@ export async function POST(request: Request): Promise<Response> {
     stripeSessionId: session.id,
     status: 'pending',
     downloadToken: null,
+    editToken: null,
     createdAt: new Date().toISOString(),
   };
 

@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { put } from '@vercel/blob';
 import { kv } from '@vercel/kv';
 import { quantizeImage } from '@/lib/pattern';
-import { renderStitchChart } from '@/lib/svg';
-import { generatePatternPdf } from '@/lib/pdf';
 import { generatePatternId } from '@/lib/types';
 import { DEFAULT_OUTPUT_TYPE, OUTPUT_TYPES } from '@/lib/types';
 import type { PatternData, StoredPattern, YarnWeight } from '@/lib/types';
@@ -229,31 +226,13 @@ export async function POST(request: Request): Promise<Response> {
       createdAt: new Date().toISOString(),
     };
 
-    const chartSvg = renderStitchChart({
-      stitchGrid: patternData.stitchGrid,
-      palette: patternData.palette,
-      preview: false,
-    });
-
-    const pdfBuffer = await generatePatternPdf({ pattern: patternData, chartSvg });
-
-    const blob = await put(`patterns/${patternId}.pdf`, pdfBuffer, {
-      access: 'public',
-      contentType: 'application/pdf',
-    });
-
     const storedPattern: StoredPattern = {
       ...patternData,
-      pdfBlobUrl: blob.url,
     };
 
     await kv.set(`pattern:${patternId}`, storedPattern, { ex: 172800 }); // 48 hours
 
-    // Never send pdfBlobUrl to the client
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { pdfBlobUrl: _omit, ...patternResponse } = storedPattern;
-
-    return Response.json(patternResponse satisfies PatternData, { status: 200 });
+    return Response.json(storedPattern satisfies PatternData, { status: 200 });
   } catch (err) {
     console.error('[POST /api/pattern] generation failed', err);
     return Response.json({ error: 'Pattern generation failed' }, { status: 500 });

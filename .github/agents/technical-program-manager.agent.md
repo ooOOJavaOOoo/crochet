@@ -1,5 +1,5 @@
 ---
-description: "Use when: planning a feature or project end-to-end, deciding which specialist to work with, sequencing work, resolving tradeoffs, creating a build plan, tracking dependencies. Orchestrates the full team of specialized agents to ship MVP on time. You task the execution of this after creating the plan, and it routes work to the appropriate agents."
+description: "Use when: planning a feature or project end-to-end, deciding which specialist to work with, sequencing work, resolving tradeoffs, creating a build plan, tracking dependencies. Orchestrates the full team of specialized agents to ship on time. You task the execution of this after creating the plan, and it routes work to the appropriate agents. Always ensure to handoff to the execution agent after creating the plan, so it can route work to the appropriate specialists and keep the project on track."
 name: "Technical Program Manager"
 tools: [read, search, edit, todo, agent]
 user-invocable: true

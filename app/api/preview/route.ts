@@ -15,6 +15,7 @@ const schema = z
         patternId: z.string().optional(),
         title: z.string().max(200).optional(),
         stitchGrid: z.array(z.array(z.number().int().min(0).max(250)).max(432)).min(1).max(432),
+        sourceHintGrid: z.array(z.array(z.number().int().min(0).max(7)).max(432)).min(1).max(432).optional(),
         palette: z.array(
           z.object({
             index: z.number().int().min(0).max(250),
@@ -85,6 +86,7 @@ export async function POST(request: Request): Promise<Response> {
     const previewLegendCount = Math.max(1, Math.ceil(totalLegendCount / 2));
     const previewSvg = renderStitchChart({
       stitchGrid: patternData.stitchGrid,
+      sourceHintGrid: patternData.sourceHintGrid,
       palette: patternData.palette,
       preview: false,
       legendLimit: previewLegendCount,

@@ -24,13 +24,21 @@ async function finalizeCheckout(
   patternId: string,
   createdAt: string,
   jwtSecret: string,
-): Promise<{ status: 'complete'; downloadToken: string }> {
+): Promise<{ status: 'complete'; downloadToken: string; editToken: string }> {
   const secret = new TextEncoder().encode(jwtSecret);
   const jti = crypto.randomUUID();
+  const editJti = crypto.randomUUID();
 
   const token = await new SignJWT({ sub: patternId, pur: 'download' })
     .setProtectedHeader({ alg: 'HS256' })
     .setJti(jti)
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(secret);
+
+  const editToken = await new SignJWT({ sub: patternId, pur: 'edit', sid: sessionId })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setJti(editJti)
     .setIssuedAt()
     .setExpirationTime('24h')
     .sign(secret);
@@ -49,6 +57,7 @@ async function finalizeCheckout(
     stripeSessionId: sessionId,
     status: 'complete',
     downloadToken: token,
+    editToken,
     createdAt,
   };
 
@@ -57,7 +66,7 @@ async function finalizeCheckout(
     kv.set(`checkout:${sessionId}`, updatedCheckout, { ex: 86400 }),
   ]);
 
-  return { status: 'complete', downloadToken: token };
+  return { status: 'complete', downloadToken: token, editToken };
 }
 
 async function getShoppingList(patternId: string): Promise<ShoppingListItem[] | null> {
@@ -103,6 +112,8 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({
       status: 'complete',
       downloadToken: checkout.downloadToken,
+      editToken: checkout.editToken ?? null,
+      patternId: checkout.patternId,
       shoppingList,
     }, {
       headers: {
@@ -161,6 +172,8 @@ export async function GET(request: Request): Promise<Response> {
       return Response.json({
         status: 'complete',
         downloadToken: completed.downloadToken,
+        editToken: completed.editToken ?? null,
+        patternId: completed.patternId,
         shoppingList,
       }, {
         headers: {
@@ -191,6 +204,8 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({
       status: finalized.status,
       downloadToken: finalized.downloadToken,
+      editToken: finalized.editToken,
+      patternId,
       shoppingList,
     }, {
       headers: {

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { ShoppingListItem } from '@/lib/types';
 import AffiliateAdStrip from '@/app/components/AffiliateAdStrip';
+import PaidPatternEditor from '@/app/components/PaidPatternEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,8 @@ type PollStatus = 'polling' | 'complete' | 'timeout' | 'error';
 interface CheckoutStatusPayload {
   status: 'pending' | 'complete' | 'expired';
   downloadToken: string | null;
+  editToken?: string | null;
+  patternId?: string | null;
   shoppingList?: ShoppingListItem[] | null;
 }
 
@@ -33,6 +36,7 @@ function Spinner() {
 function SuccessContent() {
   const [status, setStatus] = useState<PollStatus>('polling');
   const [downloadToken, setDownloadToken] = useState<string | null>(null);
+  const [editToken, setEditToken] = useState<string | null>(null);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -100,6 +104,7 @@ function SuccessContent() {
 
         if (data.status === 'complete' && data.downloadToken) {
           setDownloadToken(data.downloadToken);
+          setEditToken(data.editToken ?? null);
           setShoppingList(Array.isArray(data.shoppingList) ? data.shoppingList : []);
           setStatus('complete');
         } else if (data.status === 'expired') {
@@ -164,7 +169,7 @@ function SuccessContent() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-start px-4 py-10 sm:py-14">
-        <div className="crochet-card w-full max-w-lg rounded-[1.75rem] p-8 text-center sm:p-10">
+        <div className="crochet-card w-full max-w-5xl rounded-[1.75rem] p-8 text-center sm:p-10">
 
           {/* Polling state */}
           {status === 'polling' && (
@@ -183,16 +188,23 @@ function SuccessContent() {
           {status === 'complete' && downloadToken && (
             <>
               <div className="text-5xl mb-4" aria-hidden="true">🎉</div>
-              <h2 className="mb-2 font-display text-3xl font-semibold text-[color:var(--foreground)]">Your pattern is ready!</h2>
+              <h2 className="mb-2 font-display text-3xl font-semibold text-[color:var(--foreground)]">Payment confirmed</h2>
               <p className="mb-8 text-sm text-[color:var(--text-secondary)]">
-                Thank you for your purchase. Download your full PDF below.
+                Edit your paid chart without watermark, then generate and download your final PDF.
               </p>
+
+              {editToken && (
+                <div className="mb-6">
+                  <PaidPatternEditor editToken={editToken} />
+                </div>
+              )}
+
               <button
                 onClick={handleDownload}
                 disabled={isDownloading}
                 className="success-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDownloading ? 'Downloading…' : '⬇ Download Full PDF'}
+                {isDownloading ? 'Preparing download…' : '⬇ Generate & Download Full PDF'}
               </button>
               {downloadError && (
                 <p className="mt-3 text-sm text-[#9f3a2a]">{downloadError}</p>

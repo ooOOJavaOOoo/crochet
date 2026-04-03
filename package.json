@@ -9,6 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "verify:wolf": "node scripts/verify-wolf.mjs",
+    "export:wolf-svg": "node scripts/export-wolf-svg.mjs",
+    "export:pattern-svg": "node scripts/export-wolf-svg.mjs",
     "test:pdf": "tsx scripts/test-pdf.mjs"
   },
   "dependencies": {

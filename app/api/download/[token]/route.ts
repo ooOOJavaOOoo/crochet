@@ -1,7 +1,10 @@
 import { jwtVerify } from 'jose';
 import { kv } from '@vercel/kv';
+import { put } from '@vercel/blob';
 import type { StoredDownloadToken, StoredPattern } from '@/lib/types';
 import { checkRateLimit, rateLimitResponse } from '@/lib/ratelimit';
+import { renderStitchChart } from '@/lib/svg';
+import { generatePatternPdf } from '@/lib/pdf';
 
 export const runtime = 'nodejs';
 
@@ -93,7 +96,32 @@ export async function GET(
     return Response.json({ error: 'Pattern not found' }, { status: 404 });
   }
 
-  if (!isAllowedBlobUrl(storedPattern.pdfBlobUrl)) {
+  let pdfBlobUrl = storedPattern.pdfBlobUrl;
+  if (!pdfBlobUrl) {
+    try {
+      const chartSvg = renderStitchChart({
+        stitchGrid: storedPattern.stitchGrid,
+        sourceHintGrid: storedPattern.sourceHintGrid,
+        palette: storedPattern.palette,
+        preview: false,
+      });
+
+      const pdfBuffer = await generatePatternPdf({ pattern: storedPattern, chartSvg });
+      const blob = await put(`patterns/${storedPattern.patternId}.pdf`, pdfBuffer, {
+        access: 'public',
+        contentType: 'application/pdf',
+      });
+
+      pdfBlobUrl = blob.url;
+      await kv.set(`pattern:${storedPattern.patternId}`, { ...storedPattern, pdfBlobUrl }, { ex: 172800 });
+    } catch (err) {
+      console.error('[GET /api/download] PDF generation failed', err);
+      await kv.del(lockKey);
+      return Response.json({ error: 'Could not generate PDF' }, { status: 500 });
+    }
+  }
+
+  if (!isAllowedBlobUrl(pdfBlobUrl)) {
     await kv.del(lockKey);
     return Response.json({ error: 'Invalid file URL' }, { status: 500 });
   }
@@ -104,7 +132,7 @@ export async function GET(
   // 7. Fetch PDF from Vercel Blob and stream to client
   let blobResponse: globalThis.Response;
   try {
-    blobResponse = await fetch(storedPattern.pdfBlobUrl);
+    blobResponse = await fetch(pdfBlobUrl);
     if (!blobResponse.ok) {
       throw new Error(`Blob fetch failed: ${blobResponse.status}`);
     }

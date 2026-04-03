@@ -16,6 +16,8 @@ interface BlanketPreset {
   height: number;
 }
 
+type ProjectPreset = BlanketPreset;
+
 interface YarnColorOption {
   id: string;
   name: string;
@@ -51,6 +53,85 @@ const BLANKET_PRESETS: BlanketPreset[] = [
   { label: 'Custom', width: 120, height: 160 },
 ];
 
+const PROJECT_SIZE_PRESETS: Record<OutputType, ProjectPreset[]> = {
+  blanket: BLANKET_PRESETS,
+  beanie: [
+    { label: 'Child (60 x 70)', width: 60, height: 70 },
+    { label: 'Adult (70 x 80)', width: 70, height: 80 },
+    { label: 'Slouchy (80 x 90)', width: 80, height: 90 },
+    { label: 'Custom', width: 70, height: 80 },
+  ],
+  scarf: [
+    { label: 'Short (60 x 180)', width: 60, height: 180 },
+    { label: 'Classic (70 x 220)', width: 70, height: 220 },
+    { label: 'Long (80 x 280)', width: 80, height: 280 },
+    { label: 'Custom', width: 70, height: 220 },
+  ],
+  amigurumi: [
+    { label: 'Small plush (70 x 90)', width: 70, height: 90 },
+    { label: 'Medium plush (90 x 120)', width: 90, height: 120 },
+    { label: 'Large plush (120 x 160)', width: 120, height: 160 },
+    { label: 'Custom', width: 90, height: 120 },
+  ],
+  top: [
+    { label: 'XS-S (140 x 170)', width: 140, height: 170 },
+    { label: 'M-L (170 x 190)', width: 170, height: 190 },
+    { label: 'XL-2XL (200 x 220)', width: 200, height: 220 },
+    { label: 'Custom', width: 170, height: 190 },
+  ],
+  sweater: [
+    { label: 'XS-S (180 x 210)', width: 180, height: 210 },
+    { label: 'M-L (210 x 240)', width: 210, height: 240 },
+    { label: 'XL-2XL (240 x 280)', width: 240, height: 280 },
+    { label: 'Custom', width: 210, height: 240 },
+  ],
+  shawl: [
+    { label: 'Petite (140 x 140)', width: 140, height: 140 },
+    { label: 'Classic (180 x 180)', width: 180, height: 180 },
+    { label: 'Wrap (220 x 200)', width: 220, height: 200 },
+    { label: 'Custom', width: 180, height: 180 },
+  ],
+  hat: [
+    { label: 'Child (60 x 70)', width: 60, height: 70 },
+    { label: 'Adult (70 x 80)', width: 70, height: 80 },
+    { label: 'Wide brim (90 x 90)', width: 90, height: 90 },
+    { label: 'Custom', width: 70, height: 80 },
+  ],
+  bag: [
+    { label: 'Mini (100 x 120)', width: 100, height: 120 },
+    { label: 'Tote (140 x 160)', width: 140, height: 160 },
+    { label: 'Large tote (170 x 200)', width: 170, height: 200 },
+    { label: 'Custom', width: 140, height: 160 },
+  ],
+  pillow: [
+    { label: 'Small (80 x 80)', width: 80, height: 80 },
+    { label: 'Standard (100 x 100)', width: 100, height: 100 },
+    { label: 'Large (120 x 120)', width: 120, height: 120 },
+    { label: 'Custom', width: 100, height: 100 },
+  ],
+  'wall-hanging': [
+    { label: 'Mini (80 x 110)', width: 80, height: 110 },
+    { label: 'Standard (120 x 160)', width: 120, height: 160 },
+    { label: 'Statement (160 x 220)', width: 160, height: 220 },
+    { label: 'Custom', width: 120, height: 160 },
+  ],
+  other: [
+    { label: 'Small (90 x 120)', width: 90, height: 120 },
+    { label: 'Medium (120 x 160)', width: 120, height: 160 },
+    { label: 'Large (160 x 220)', width: 160, height: 220 },
+    { label: 'Custom', width: 120, height: 160 },
+  ],
+};
+
+const YARN_BRANDS = [
+  { value: 'red-heart', label: 'Red Heart' },
+  { value: 'bernat', label: 'Bernat' },
+  { value: 'lion-brand', label: 'Lion Brand' },
+  { value: 'caron', label: 'Caron' },
+  { value: 'i-love-this-yarn', label: 'I Love this Yarn' },
+  { value: 'yarn-bee', label: 'Yarn Bee (DK)' },
+];
+
 const OUTPUT_TYPE_OPTIONS: Array<{ value: OutputType; label: string }> = [
   { value: 'blanket', label: 'Blanket' },
   { value: 'beanie', label: 'Beanie' },
@@ -64,14 +145,6 @@ const OUTPUT_TYPE_OPTIONS: Array<{ value: OutputType; label: string }> = [
   { value: 'pillow', label: 'Pillow' },
   { value: 'wall-hanging', label: 'Wall Hanging' },
   { value: 'other', label: 'Other (custom)' },
-];
-
-const HERO_SWATCHES = [
-  { name: 'Terracotta Thread', hex: '#b85c38' },
-  { name: 'Oat Gold', hex: '#d89e58' },
-  { name: 'Moss Loop', hex: '#35624a' },
-  { name: 'Denim Stitch', hex: '#2e5e8a' },
-  { name: 'Walnut Warmth', hex: '#6f4f3a' },
 ];
 
 export default function SettingsForm({
@@ -95,15 +168,30 @@ export default function SettingsForm({
   onAdvancedSettingsExpandedChange,
   onDispatch,
 }: SettingsFormProps) {
-  const isCustomPreset = presetIndex === BLANKET_PRESETS.length - 1;
+  const activePresets = PROJECT_SIZE_PRESETS[outputType] ?? BLANKET_PRESETS;
+  const customPresetIndex = activePresets.length - 1;
+  const isCustomPreset = presetIndex === customPresetIndex;
 
   const handlePresetChange = (index: number) => {
-    const preset = BLANKET_PRESETS[index] ?? BLANKET_PRESETS[BLANKET_PRESETS.length - 1];
+    const preset = activePresets[index] ?? activePresets[activePresets.length - 1];
     onDispatch({
       type: 'SetPreset',
       presetIndex: index,
       width: preset.width,
       height: preset.height,
+    });
+  };
+
+  const handleOutputTypeChange = (nextOutputType: OutputType) => {
+    onDispatch({ type: 'SetOutputType', outputType: nextOutputType });
+    const presets = PROJECT_SIZE_PRESETS[nextOutputType] ?? BLANKET_PRESETS;
+    const defaultPresetIndex = Math.min(1, presets.length - 1);
+    const defaultPreset = presets[defaultPresetIndex] ?? presets[0];
+    onDispatch({
+      type: 'SetPreset',
+      presetIndex: defaultPresetIndex,
+      width: defaultPreset.width,
+      height: defaultPreset.height,
     });
   };
 
@@ -129,9 +217,7 @@ export default function SettingsForm({
           <select
             id="output-type"
             value={outputType}
-            onChange={(event) =>
-              onDispatch({ type: 'SetOutputType', outputType: event.target.value as OutputType })
-            }
+            onChange={(event) => handleOutputTypeChange(event.target.value as OutputType)}
             className="form-input"
           >
             {OUTPUT_TYPE_OPTIONS.map((option) => (
@@ -175,9 +261,32 @@ export default function SettingsForm({
             onChange={(event) => handlePresetChange(Number(event.target.value))}
             className="form-input"
           >
-            {BLANKET_PRESETS.map((preset, index) => (
+            {activePresets.map((preset, index) => (
               <option key={preset.label} value={index}>
                 {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Yarn Brand */}
+        <div>
+          <label htmlFor="brand" className="form-label">
+            Brand
+          </label>
+          <select
+            id="brand"
+            value={brandId}
+            onChange={(event) => onDispatch({ type: 'SetBrandId', brandId: event.target.value })}
+            className="form-input"
+            required
+          >
+            <option value="" disabled>
+              Select a yarn brand
+            </option>
+            {YARN_BRANDS.map((brand) => (
+              <option key={brand.value} value={brand.value}>
+                {brand.label}
               </option>
             ))}
           </select>
@@ -220,48 +329,13 @@ export default function SettingsForm({
           </div>
         )}
 
-        {/* Color Count Slider */}
-        <div className="rounded-[1.5rem] bg-gradient-to-r from-[rgba(184,92,56,0.08)] via-[rgba(216,158,88,0.12)] to-[rgba(46,94,138,0.08)] px-4 py-4">
-          <label htmlFor="color-count" className="form-label mb-2">
-            Number of colors: <span className="text-[color:var(--foreground)]">{colorCount}</span>
-          </label>
-          <input
-            id="color-count-slider"
-            type="range"
-            min={2}
-            max={25}
-            value={colorCount}
-            onChange={(event) =>
-              onDispatch({ type: 'SetColorCount', colorCount: Number(event.target.value) })
-            }
-            className="color-slider w-full"
-            aria-valuenow={colorCount}
-            aria-valuemin={2}
-            aria-valuemax={25}
-            aria-label="Number of colors"
-          />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {HERO_SWATCHES.slice(0, Math.min(colorCount, HERO_SWATCHES.length)).map((swatch) => (
-              <span
-                key={swatch.name}
-                className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-[color:var(--text-secondary)]"
-              >
-                {swatch.name}
-              </span>
-            ))}
-          </div>
-          {colorCount <= 4 && (
-            <p className="mt-3 rounded-2xl border border-[color:var(--border-strong)] bg-white/70 px-3 py-3 text-xs leading-5 text-[color:var(--foreground)]">
-              Very low color counts can flatten details. Increase the slider if the preview feels too simplified.
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Advanced Settings (Collapsible) */}
       <AdvancedSettings
         renderMode={renderMode}
         flattenBackgroundRegions={flattenBackgroundRegions}
+        colorCount={colorCount}
         stitchType={stitchType}
         yarnWeight={yarnWeight}
         hookSize={hookSize}

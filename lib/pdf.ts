@@ -3,7 +3,7 @@ import { Resvg } from '@resvg/resvg-js';
 import type { PatternData, PaletteEntry } from './types';
 import { buildAmazonShoppingList } from './shopping';
 import { getYarnWeightConfig } from './yarnWeight';
-import { renderStitchChart } from './svg';
+import { renderStitchChart, validateStitchChartSvg } from './svg';
 import { getOutputTypeLabel } from './outputType';
 
 export interface PdfOptions {
@@ -154,6 +154,33 @@ function getSvgViewBoxWidth(svg: string): number | null {
   return width > 0 ? width : null;
 }
 
+function assertSvgPreflight(opts: {
+  svg: string;
+  width: number;
+  height: number;
+  paletteSize: number;
+  expectLegend: boolean;
+  context: string;
+}): void {
+  const validation = validateStitchChartSvg({
+    svg: opts.svg,
+    gridWidth: opts.width,
+    gridHeight: opts.height,
+    paletteSize: opts.paletteSize,
+    expectAxisLabels: true,
+    expectLegend: opts.expectLegend,
+  });
+
+  if (validation.overallPass) return;
+
+  const failed = validation.checks
+    .filter((check) => !check.pass)
+    .map((check) => `${check.id}: ${check.detail}`)
+    .join(' | ');
+
+  throw new Error(`[${opts.context}] SVG preflight failed: ${failed}`);
+}
+
 export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   const { pattern, chartSvg } = opts;
   const outputTypeLabel = getOutputTypeLabel(pattern.outputType ?? 'blanket', pattern.customOutputTypeLabel);
@@ -166,6 +193,15 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   const black = rgb(0, 0, 0);
   const gray = rgb(0.4, 0.4, 0.4);
   const lightGray = rgb(0.85, 0.85, 0.85);
+
+  assertSvgPreflight({
+    svg: chartSvg,
+    width: pattern.dimensions.width,
+    height: pattern.dimensions.height,
+    paletteSize: pattern.palette.length,
+    expectLegend: true,
+    context: 'input-chart',
+  });
 
   // Pre-render chart SVG to PNG once. A minimum raster width keeps labels and cells
   // crisp even for small patterns that are scaled up on the final chart page.
@@ -681,11 +717,21 @@ export async function generatePatternPdf(opts: PdfOptions): Promise<Buffer> {
   {
     const axisChartSvg = renderStitchChart({
       stitchGrid: pattern.stitchGrid,
+      sourceHintGrid: pattern.sourceHintGrid,
       palette: pattern.palette,
       preview: false,
       showLegend: false,
       rowLabelOffset: 0,
       colLabelOffset: 0,
+    });
+
+    assertSvgPreflight({
+      svg: axisChartSvg,
+      width: pattern.dimensions.width,
+      height: pattern.dimensions.height,
+      paletteSize: pattern.palette.length,
+      expectLegend: false,
+      context: 'full-axis-chart',
     });
 
     const page = newPage();
