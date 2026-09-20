@@ -8,7 +8,8 @@ const AMAZON_FALLBACK_ASSOCIATE_TAG = 'changeme-20';
 const MICHAELS_SEARCH_URL = 'https://www.michaels.com/search';
 const MICHAELS_DEFAULT_QUERY = 'crochet supplies';
 // Michaels CJ advertiser ID (Commission Junction program)
-const MICHAELS_CJ_ADVERTISER_ID = '10045459';
+// Verified from the Michaels CJ export: adv cid is 4209848.
+const MICHAELS_CJ_ADVERTISER_ID = '4209848';
 const CJ_CLICK_BASE = 'https://www.anrdoezrs.net/click';
 const DIGITS_ONLY = /^\d+$/;
 const AMAZON_ASSOCIATE_TAG = /^[a-z0-9][a-z0-9-]{1,48}-20$/i;
@@ -28,7 +29,11 @@ function getAmazonAssociateTag(): string {
 }
 
 function getMichaelsCjPublisherId(): string | null {
-  const id = process.env.MICHAELS_CJ_PUBLISHER_ID?.trim();
+  const id = (
+    process.env.MICHAELS_CJ_PUBLISHER_ID ??
+    process.env.NEXT_PUBLIC_MICHAELS_CJ_PUBLISHER_ID
+  )?.trim();
+
   if (!id || id.length === 0) {
     return null;
   }
@@ -37,7 +42,11 @@ function getMichaelsCjPublisherId(): string | null {
 }
 
 function getMichaelsCjAdvertiserId(): string {
-  const id = process.env.MICHAELS_CJ_ADVERTISER_ID?.trim();
+  const id = (
+    process.env.MICHAELS_CJ_ADVERTISER_ID ??
+    process.env.NEXT_PUBLIC_MICHAELS_CJ_ADVERTISER_ID
+  )?.trim();
+
   if (!id || id.length === 0) {
     return MICHAELS_CJ_ADVERTISER_ID;
   }

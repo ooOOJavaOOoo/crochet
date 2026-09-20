@@ -4,13 +4,12 @@ import Image from 'next/image';
 import { ChangeEvent, useEffect, useReducer } from 'react';
 import type { OutputType, PatternData, RenderMode, StitchType, YarnWeight } from '@/lib/types';
 import { DEFAULT_OUTPUT_TYPE } from '@/lib/types';
-import AffiliateAdStrip from '@/app/components/AffiliateAdStrip';
 import StepIndicator from '@/app/components/StepIndicator';
 import ImageUploadSection from '@/app/components/ImageUploadSection';
 import SettingsForm from '@/app/components/SettingsForm';
 import PreviewBoard from '@/app/components/PreviewBoard';
 import FloatingSummary from '@/app/components/FloatingSummary';
-import { YARN_WEIGHT_CONFIGS, DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook, CROSS_STITCH_AIDA_OPTIONS } from '@/lib/yarnWeight';
+import { DEFAULT_YARN_WEIGHT, getYarnWeightConfig, getDefaultHook } from '@/lib/yarnWeight';
 import { getOutputTypeLabel } from '@/lib/outputType';
 
 type Step = 'image' | 'settings' | 'generating' | 'preview' | 'buying';
@@ -54,30 +53,6 @@ const BLANKET_PRESETS: BlanketPreset[] = [
   { label: 'Custom', width: 120, height: 160 },
 ];
 
-const YARN_BRANDS = [
-  { value: 'red-heart', label: 'Red Heart' },
-  { value: 'bernat', label: 'Bernat' },
-  { value: 'lion-brand', label: 'Lion Brand' },
-  { value: 'caron', label: 'Caron' },
-  { value: 'i-love-this-yarn', label: 'I Love this Yarn' },
-  { value: 'yarn-bee', label: 'Yarn Bee (DK)' },
-];
-
-const OUTPUT_TYPE_OPTIONS: Array<{ value: OutputType; label: string }> = [
-  { value: 'blanket', label: 'Blanket' },
-  { value: 'beanie', label: 'Beanie' },
-  { value: 'scarf', label: 'Scarf' },
-  { value: 'amigurumi', label: 'Amigurumi' },
-  { value: 'top', label: 'Top' },
-  { value: 'sweater', label: 'Sweater' },
-  { value: 'shawl', label: 'Shawl' },
-  { value: 'hat', label: 'Hat' },
-  { value: 'bag', label: 'Bag' },
-  { value: 'pillow', label: 'Pillow' },
-  { value: 'wall-hanging', label: 'Wall Hanging' },
-  { value: 'other', label: 'Other (custom)' },
-];
-
 const HERO_SWATCHES = [
   { name: 'Terracotta Thread', hex: '#b85c38' },
   { name: 'Oat Gold', hex: '#d89e58' },
@@ -96,39 +71,6 @@ const TRUST_POINTS = [
   'Built for crochet artists and custom makers',
   'Fast preview before you commit to a full pattern',
   'Clear yarn and chart planning for real projects',
-];
-
-const HOW_IT_WORKS_STEPS = [
-  {
-    title: 'Describe your idea',
-    description: 'Upload your image and choose yarn-aware settings for size, stitch, and color count.',
-  },
-  {
-    title: 'Generate pattern and preview',
-    description: 'See a watermarked chart and color legend before committing to the full download.',
-  },
-  {
-    title: 'Checkout and deliver',
-    description: 'Unlock the complete PDF pattern and yarn inventory with one secure purchase.',
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    quote:
-      'I turned a custom pet portrait order into a polished pattern in one evening and shipped it the same day.',
-    author: 'Lina, Etsy seller',
-  },
-  {
-    quote:
-      'The previews help me catch color issues fast. I use less yarn and avoid rework on large blankets.',
-    author: 'Monique, pattern designer',
-  },
-  {
-    quote:
-      'It feels like having a technical editor in my studio. The charts are cleaner than my old manual workflow.',
-    author: 'Sofia, crochet instructor',
-  },
 ];
 
 const SAMPLE_PATTERN_EXAMPLES = [
@@ -446,10 +388,6 @@ function handleAdjustClick(sectionId: string, dispatch: (action: Action) => void
 export default function HomePage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const resolvedOutputTypeLabel = getOutputTypeLabel(state.outputType, state.customOutputTypeLabel);
-  const activeQualityWarnings = state.patternData?.qualityWarnings ?? [];
-  const qaFlags = state.patternData?.qaFlags ?? [];
-  const qualityMetrics = state.patternData?.qualityMetrics;
-  const warningList = Array.from(new Set(activeQualityWarnings));
   const jsonLdPayloads = [
     {
       '@context': 'https://schema.org',
@@ -486,20 +424,6 @@ export default function HomePage() {
       })),
     },
   ];
-
-  const getYarnDisplayName = (item: {
-    yarnBrand?: string;
-    yarnColorName?: string;
-    name?: string;
-  }): string => {
-    if (item.yarnBrand && item.yarnColorName) {
-      return `${item.yarnBrand} - ${item.yarnColorName}`;
-    }
-    if (item.yarnColorName) {
-      return item.yarnColorName;
-    }
-    return item.name ?? 'Unnamed color';
-  };
 
   useEffect(() => {
     if (!state.toast) {
@@ -576,16 +500,6 @@ export default function HomePage() {
       const message = error instanceof Error ? error.message : 'Failed to read selected image.';
       dispatch({ type: 'SetError', error: message });
     }
-  };
-
-  const handlePresetChange = (presetIndex: number) => {
-    const preset = BLANKET_PRESETS[presetIndex] ?? BLANKET_PRESETS[BLANKET_PRESETS.length - 1];
-    dispatch({
-      type: 'SetPreset',
-      presetIndex,
-      width: preset.width,
-      height: preset.height,
-    });
   };
 
   const handleAiImage = async () => {
@@ -724,8 +638,6 @@ export default function HomePage() {
     }
   };
 
-  const isCustomPreset = state.presetIndex === BLANKET_PRESETS.length - 1;
-
   return (
     <div className="crochet-page min-h-screen text-[color:var(--foreground)]">
       {jsonLdPayloads.map((payload, index) => (
@@ -775,7 +687,16 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="mb-6 grid gap-3 sm:grid-cols-3">
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a href="#generator" className="primary-button rounded-2xl px-5 py-3 text-sm font-semibold text-white">
+                  Start from a photo
+                </a>
+                <a href="#samples" className="rounded-2xl border border-[color:var(--border-soft)] bg-white/70 px-5 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:bg-white">
+                  See examples
+                </a>
+              </div>
+
+              <div className="mb-6 mt-6 grid gap-3 sm:grid-cols-3">
                 {CROCHET_FEATURES.map((feature) => (
                   <div key={feature} className="feature-pill rounded-2xl px-4 py-4 text-sm leading-6 text-[color:var(--text-secondary)]">
                     {feature}
@@ -884,7 +805,7 @@ export default function HomePage() {
           />
         )}
 
-        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/70 p-6 sm:p-8">
+        <section id="samples" className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/70 p-6 sm:p-8">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="mono-meta text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">Sample patterns</p>
@@ -972,66 +893,18 @@ export default function HomePage() {
           />
         </div>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-3">
-          {HOW_IT_WORKS_STEPS.map((step, index) => (
-            <article key={step.title} className="trust-card rounded-[1.5rem] p-5 sm:p-6">
-              <p className="mono-meta text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">
-                Step {index + 1}
-              </p>
-              <h3 className="font-display mt-3 text-2xl font-semibold text-[color:var(--foreground)]">{step.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[color:var(--text-secondary)]">{step.description}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/60 p-6 sm:p-8">
-          <AffiliateAdStrip filter={['hook', 'accessory']} heading="Recommended Hooks & Tools" />
-        </section>
-
-        <section className="mt-8 grid gap-6 lg:grid-cols-3">
-          {TESTIMONIALS.map((testimonial) => (
-            <blockquote key={testimonial.author} className="trust-card rounded-[1.5rem] p-5 sm:p-6">
-              <p className="text-base leading-7 text-[color:var(--foreground)]">&ldquo;{testimonial.quote}&rdquo;</p>
-              <footer className="mono-meta mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--brand-secondary)]">
-                {testimonial.author}
-              </footer>
-            </blockquote>
-          ))}
-        </section>
-
-        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/65 p-6 sm:p-8">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-3xl font-semibold text-[color:var(--foreground)]">Frequently asked questions</h2>
-            <p className="mono-meta text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--brand-secondary)]">
-              Built for real maker workflows
-            </p>
-          </div>
-          <div className="grid gap-3">
-            {FAQ_ITEMS.map((faq) => (
-              <details key={faq.question} className="faq-item rounded-2xl px-4 py-3">
-                <summary className="cursor-pointer text-sm font-semibold text-[color:var(--foreground)]">{faq.question}</summary>
-                <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">{faq.answer}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/60 p-6 sm:p-8">
-          <AffiliateAdStrip filter={['yarn', 'book']} heading="Yarns & Learning Resources" />
-        </section>
-
         <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-gradient-to-r from-[rgba(184,92,56,0.11)] to-[rgba(53,98,74,0.11)] px-6 py-8 sm:px-8 sm:py-10">
           <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
             <div>
               <h2 className="font-display text-3xl font-semibold text-[color:var(--foreground)] sm:text-4xl">
-                Publish your first pattern today
+                Ready to turn your photo into a chart?
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[color:var(--text-secondary)] sm:text-base">
-                Keep your generated draft momentum: start now, preview fast, and check out only when your chart looks right.
+                Upload your reference, tweak the settings, and generate a preview before you buy.
               </p>
             </div>
             <a href="#generator" className="primary-button rounded-2xl px-6 py-3 text-sm font-semibold text-white">
-              Create My First Pattern
+              Start now
             </a>
           </div>
         </section>

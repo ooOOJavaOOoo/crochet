@@ -7,7 +7,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AMAZON_TAG = 'crochetcanvas-20';
-const MICHAELS_CJ_ADVERTISER_ID = '10045459';
+// Verified from the Michaels CJ export: adv cid is 4209848.
+const MICHAELS_CJ_ADVERTISER_ID = '4209848';
 const DIGITS_ONLY = /^\d+$/;
 
 function buildAmazonUrl(query: string): string {
@@ -23,9 +24,17 @@ function buildMichaelsUrl(query: string): string {
   const target = new URL('https://www.michaels.com/search');
   target.searchParams.set('q', query);
 
-  // Prefer configured CJ IDs, but fall back to direct Michaels search if unavailable.
-  const publisherId = process.env.NEXT_PUBLIC_MICHAELS_CJ_PUBLISHER_ID?.trim();
-  const advertiserId = process.env.NEXT_PUBLIC_MICHAELS_CJ_ADVERTISER_ID?.trim() || MICHAELS_CJ_ADVERTISER_ID;
+  // Support both server-side and public env vars so the CJ affiliate ID is
+  // passed through when configured in Vercel, while keeping the direct Michaels
+  // search as a safe fallback for local or unconfigured deployments.
+  const publisherId = (
+    process.env.MICHAELS_CJ_PUBLISHER_ID ??
+    process.env.NEXT_PUBLIC_MICHAELS_CJ_PUBLISHER_ID
+  )?.trim();
+  const advertiserId = (
+    process.env.MICHAELS_CJ_ADVERTISER_ID ??
+    process.env.NEXT_PUBLIC_MICHAELS_CJ_ADVERTISER_ID
+  )?.trim() || MICHAELS_CJ_ADVERTISER_ID;
 
   if (!publisherId || !DIGITS_ONLY.test(publisherId) || !DIGITS_ONLY.test(advertiserId)) {
     return target.toString();
