@@ -230,7 +230,16 @@ export async function POST(request: Request): Promise<Response> {
       ...patternData,
     };
 
-    await kv.set(`pattern:${patternId}`, storedPattern, { ex: 172800 }); // 48 hours
+    const kvConfigured = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
+    if (kvConfigured) {
+      try {
+        await kv.set(`pattern:${patternId}`, storedPattern, { ex: 172800 }); // 48 hours
+      } catch (kvError) {
+        console.warn('[POST /api/pattern] KV persistence failed; returning generated pattern without storing it.', kvError);
+      }
+    } else {
+      console.warn('[POST /api/pattern] KV not configured; returning generated pattern without storing it.');
+    }
 
     return Response.json(storedPattern satisfies PatternData, { status: 200 });
   } catch (err) {
