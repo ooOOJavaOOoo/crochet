@@ -62,15 +62,15 @@ const HERO_SWATCHES = [
 ];
 
 const CROCHET_FEATURES = [
-  'Turn a photo into a chart without hand-gridding every square.',
-  'Keep your custom crochet project visually grounded in the original image.',
-  'Review a clean preview before you buy and download the full pattern.',
+  'Turn a reference photo into a custom crochet chart.',
+  'Adjust the size, colors, and yarn plan before checkout.',
+  'Review the chart preview before you buy the full pattern.',
 ];
 
 const TRUST_POINTS = [
-  'Built for crochet artists and custom makers',
-  'Fast preview before you commit to a full pattern',
-  'Clear yarn and chart planning for real projects',
+  'Built for crochet makers and custom projects',
+  'Preview before you commit to checkout',
+  'From photo to chart in a few guided steps',
 ];
 
 const SAMPLE_PATTERN_EXAMPLES = [
@@ -679,20 +679,20 @@ export default function HomePage() {
               <div className="mb-5">
                 <div className="max-w-3xl">
                   <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl lg:text-6xl">
-                    Turn a photo into a stitch-ready crochet chart.
+                    Turn a photo into a crochet chart you can actually use.
                   </h1>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-[color:var(--text-secondary)] sm:text-lg">
-                    Built for crochet artists and custom makers who want to transform reference photos into usable tapestry patterns, without spending hours hand-gridding every stitch.
+                    Upload a reference image, adjust the colors and size, and preview the chart before you buy.
                   </p>
                 </div>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <a href="#generator" className="primary-button rounded-2xl px-5 py-3 text-sm font-semibold text-white">
-                  Start from a photo
+                  Upload a photo and preview the chart
                 </a>
                 <a href="#samples" className="rounded-2xl border border-[color:var(--border-soft)] bg-white/70 px-5 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:bg-white">
-                  See examples
+                  See sample patterns
                 </a>
               </div>
 
@@ -805,6 +805,31 @@ export default function HomePage() {
           />
         )}
 
+        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/70 p-6 sm:p-8">
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div>
+              <p className="mono-meta text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">How it works</p>
+              <h2 className="font-display mt-2 text-3xl font-semibold text-[color:var(--foreground)]">Start with a photo, then shape the chart</h2>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { title: '1. Upload a photo', body: 'Start with your reference image or generate one with AI.' },
+              { title: '2. Tune the chart', body: 'Adjust the grid, colors, yarn setup, and output type to fit your project.' },
+              { title: '3. Preview before you buy', body: 'Review the chart, then purchase the full PDF when you are ready.' },
+            ].map((step) => (
+              <article key={step.title} className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-subtle)] p-5">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-[color:var(--brand-primary)] shadow-sm">
+                  {step.title.split('.')[0]}
+                </div>
+                <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">{step.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section id="samples" className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/70 p-6 sm:p-8">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -812,7 +837,7 @@ export default function HomePage() {
               <h2 className="font-display mt-2 text-3xl font-semibold text-[color:var(--foreground)]">From reference image to custom crochet chart</h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-[color:var(--text-secondary)]">
-              These examples show the kind of results makers use for portraits, wall hangings, and custom projects before they finalize a pattern.
+              These examples show how makers turn portraits, floral artwork, and keepsake projects into custom chart plans before they finalize a pattern.
             </p>
           </div>
 
@@ -897,14 +922,14 @@ export default function HomePage() {
           <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
             <div>
               <h2 className="font-display text-3xl font-semibold text-[color:var(--foreground)] sm:text-4xl">
-                Ready to turn your photo into a chart?
+                Ready to turn your photo into a chart you can actually use?
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[color:var(--text-secondary)] sm:text-base">
-                Upload your reference, tweak the settings, and generate a preview before you buy.
+                Upload your reference, tune the chart, and review the preview before you buy.
               </p>
             </div>
             <a href="#generator" className="primary-button rounded-2xl px-6 py-3 text-sm font-semibold text-white">
-              Start now
+              Upload a photo and preview the chart
             </a>
           </div>
         </section>
