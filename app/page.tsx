@@ -62,15 +62,15 @@ const HERO_SWATCHES = [
 ];
 
 const CROCHET_FEATURES = [
-  'Turn a reference photo into a custom crochet chart.',
-  'Adjust the size, colors, and yarn plan before checkout.',
-  'Review the chart preview before you buy the full pattern.',
+  'Turn any reference photo into a custom crochet chart.',
+  'Keep the defaults and adjust only what you need.',
+  'Preview the chart before you buy the full pattern.',
 ];
 
 const TRUST_POINTS = [
-  'Built for crochet makers and custom projects',
-  'Preview before you commit to checkout',
-  'From photo to chart in a few guided steps',
+  'Made for crochet artists and pattern makers',
+  'Fast preview before checkout',
+  'Smart defaults for quicker setup',
 ];
 
 const SAMPLE_PATTERN_EXAMPLES = [
@@ -679,17 +679,17 @@ export default function HomePage() {
               <div className="mb-5">
                 <div className="max-w-3xl">
                   <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl lg:text-6xl">
-                    Turn a photo into a crochet chart you can actually use.
+                    Turn a reference photo into a crochet chart.
                   </h1>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-[color:var(--text-secondary)] sm:text-lg">
-                    Upload a reference image, adjust the colors and size, and preview the chart before you buy.
+                    Upload an image, keep the defaults, and preview the chart before you buy.
                   </p>
                 </div>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <a href="#generator" className="primary-button rounded-2xl px-5 py-3 text-sm font-semibold text-white">
-                  Upload a photo and preview the chart
+                  Upload an image and generate preview
                 </a>
                 <a href="#samples" className="rounded-2xl border border-[color:var(--border-soft)] bg-white/70 px-5 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:bg-white">
                   See sample patterns
@@ -809,15 +809,15 @@ export default function HomePage() {
           <div className="mb-6 flex items-center justify-between gap-3">
             <div>
               <p className="mono-meta text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">How it works</p>
-              <h2 className="font-display mt-2 text-3xl font-semibold text-[color:var(--foreground)]">Start with a photo, then shape the chart</h2>
+              <h2 className="font-display mt-2 text-3xl font-semibold text-[color:var(--foreground)]">Start fast, then refine if you want</h2>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { title: '1. Upload a photo', body: 'Start with your reference image or generate one with AI.' },
-              { title: '2. Tune the chart', body: 'Adjust the grid, colors, yarn setup, and output type to fit your project.' },
-              { title: '3. Preview before you buy', body: 'Review the chart, then purchase the full PDF when you are ready.' },
+              { title: '1. Upload your image', body: 'Use a photo, artwork, or AI-generated reference to begin the chart.' },
+              { title: '2. Keep the defaults', body: 'Choose the project type and size, then let the preset settings get you moving.' },
+              { title: '3. Preview before you buy', body: 'Review the chart, adjust only what you need, and download the PDF when ready.' },
             ].map((step) => (
               <article key={step.title} className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-subtle)] p-5">
                 <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-[color:var(--brand-primary)] shadow-sm">
@@ -922,14 +922,14 @@ export default function HomePage() {
           <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
             <div>
               <h2 className="font-display text-3xl font-semibold text-[color:var(--foreground)] sm:text-4xl">
-                Ready to turn your photo into a chart you can actually use?
+                Ready to convert your image into a crochet chart?
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[color:var(--text-secondary)] sm:text-base">
-                Upload your reference, tune the chart, and review the preview before you buy.
+                Upload your reference, keep the defaults, and review the preview before you buy.
               </p>
             </div>
             <a href="#generator" className="primary-button rounded-2xl px-6 py-3 text-sm font-semibold text-white">
-              Upload a photo and preview the chart
+              Upload an image and generate preview
             </a>
           </div>
         </section>
