@@ -28,6 +28,7 @@ export interface PatternQualityMetrics {
   duplicateColorRatio: number;
   flatRegionFragmentation: number;
   skyTreeContinuityScore: number;
+  skyTreeContinuityApplicable: boolean;
 }
 
 export interface PaletteEntry {

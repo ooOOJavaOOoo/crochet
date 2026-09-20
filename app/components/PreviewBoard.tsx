@@ -231,7 +231,9 @@ export default function PreviewBoard({
                     Sky/tree continuity
                   </p>
                   <p className="mt-1 text-lg font-semibold text-[color:var(--foreground)]">
-                    {qualityMetrics.skyTreeContinuityScore}
+                    {qualityMetrics.skyTreeContinuityApplicable
+                      ? qualityMetrics.skyTreeContinuityScore
+                      : 'N/A'}
                   </p>
                 </div>
               </div>

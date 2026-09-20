@@ -2550,12 +2550,17 @@ function computePatternQualityMetrics(opts: {
   const treeColor = dominantColorInBand(indices, width, 0, sideCols, 0, height);
   const skyContinuity = largestComponentRatioForColor(indices, width, height, skyColor);
   const treeContinuity = largestComponentRatioForColor(indices, width, height, treeColor);
-  const skyTreeContinuityScore = Math.round(((skyContinuity + treeContinuity) / 2) * 100);
+  const skyTreeContinuityApplicable =
+    skyColor !== treeColor && skyContinuity >= 0.35 && treeContinuity >= 0.35;
+  const skyTreeContinuityScore = skyTreeContinuityApplicable
+    ? Math.round(((skyContinuity + treeContinuity) / 2) * 100)
+    : 100;
 
   return {
     duplicateColorRatio: clamp01(computeDuplicateColorRatio(palette)),
     flatRegionFragmentation,
     skyTreeContinuityScore,
+    skyTreeContinuityApplicable,
   };
 }
 
@@ -2574,7 +2579,7 @@ function buildQaFlags(metrics: PatternQualityMetrics, flattenBackgroundRegions: 
     );
   }
 
-  if (metrics.skyTreeContinuityScore < 65) {
+  if (metrics.skyTreeContinuityApplicable && metrics.skyTreeContinuityScore < 65) {
     flags.push('Sky/tree continuity is low. Large background masses may need manual refinement.');
   }
 

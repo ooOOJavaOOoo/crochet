@@ -50,6 +50,7 @@ const patternDataSchema = z.object({
     duplicateColorRatio: z.number(),
     flatRegionFragmentation: z.number(),
     skyTreeContinuityScore: z.number(),
+    skyTreeContinuityApplicable: z.boolean(),
   }).optional(),
   qaFlags: z.array(z.string().max(200)).optional(),
   createdAt: z.string(),
