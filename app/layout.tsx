@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     'photo to crochet pattern',
   ],
   alternates: {
-    canonical: '/',
+    canonical: siteUrl,
   },
   robots: {
     index: true,
@@ -67,14 +67,15 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    url: '/',
+    url: siteUrl,
     siteName: 'Crochet Canvas',
     title: 'Crochet Canvas — Turn a photo into a stitch-ready crochet chart',
     description:
       'Turn a reference photo into a stitch-ready crochet chart with yarn-aware settings, preview tools, and instant PDF delivery.',
     images: [
       {
-        url: '/crochet-canvas-logo.svg',
+        // Prefer a raster social preview for better compatibility with crawlers
+        url: `${siteUrl}/og-home.png`,
         width: 1200,
         height: 630,
         alt: 'Crochet Canvas app preview showing generated tapestry crochet chart',
@@ -87,7 +88,7 @@ export const metadata: Metadata = {
     title: 'Crochet Canvas — Turn a photo into a stitch-ready crochet chart',
     description:
       'Turn a reference photo into a stitch-ready crochet chart with yarn-aware settings and instant PDF delivery.',
-    images: ['/crochet-canvas-logo.svg'],
+    images: [`${siteUrl}/og-home.png`],
   },
 };
 

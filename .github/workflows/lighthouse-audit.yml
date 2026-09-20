@@ -1,0 +1,38 @@
+name: Lighthouse Audit
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg2
+          # Install Chrome
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - || true
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable || sudo apt-get install -y chromium-browser
+          npm install -g lighthouse
+
+      - name: Run Lighthouse (desktop)
+        run: |
+          lighthouse https://crochetcanvas.com --output=json --output-path=./lighthouse-report-desktop.json --chrome-flags="--no-sandbox" --preset=desktop
+
+      - name: Run Lighthouse (mobile)
+        run: |
+          lighthouse https://crochetcanvas.com --output=json --output-path=./lighthouse-report-mobile.json --chrome-flags="--no-sandbox" --preset=mobile
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: |
+            ./lighthouse-report-desktop.json
+            ./lighthouse-report-mobile.json

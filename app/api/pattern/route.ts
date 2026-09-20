@@ -234,6 +234,19 @@ export async function POST(request: Request): Promise<Response> {
     if (kvConfigured) {
       try {
         await kv.set(`pattern:${patternId}`, storedPattern, { ex: 172800 }); // 48 hours
+        // Add this patternId to the sitemap index for server-generated pattern pages.
+        try {
+          const rawIndex = await kv.get<string>('sitemap:patterns');
+          const ids: string[] = rawIndex ? JSON.parse(rawIndex) : [];
+          if (!ids.includes(patternId)) {
+            ids.unshift(patternId); // put newest first
+            // keep the list reasonably bounded
+            const slice = ids.slice(0, 5000);
+            await kv.set('sitemap:patterns', JSON.stringify(slice));
+          }
+        } catch (idxErr) {
+          console.warn('[POST /api/pattern] failed to update sitemap index', idxErr);
+        }
       } catch (kvError) {
         console.warn('[POST /api/pattern] KV persistence failed; returning generated pattern without storing it.', kvError);
       }
