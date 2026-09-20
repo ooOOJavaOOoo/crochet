@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://crochetcanvas.com/</loc>
+    <lastmod>2026-09-20T00:00:00Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://crochetcanvas.com/og-home.png</image:loc>
+      <image:caption>Crochet Canvas — Turn a photo into a stitch-ready crochet chart</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://crochetcanvas.com/success</loc>
+    <lastmod>2026-09-20T00:00:00Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://crochetcanvas.com/pattern/abcd1234</loc>
+    <lastmod>2026-09-20T00:00:00Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crochetcanvas.com/pattern/xyz9876</loc>
+    <lastmod>2026-09-20T00:00:00Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>

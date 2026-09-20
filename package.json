@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "verify:wolf": "node scripts/verify-wolf.mjs",

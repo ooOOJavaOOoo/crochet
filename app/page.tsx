@@ -818,11 +818,8 @@ export default function HomePage() {
               { title: 'Upload your image', body: 'Use a photo, artwork, or AI-generated reference to begin the chart.' },
               { title: 'Keep the defaults', body: 'Choose the project type and size, then let the preset settings get you moving.' },
               { title: 'Preview before you buy', body: 'Review the chart, adjust only what you need, and download the PDF when ready.' },
-            ].map((step, index) => (
+            ].map((step) => (
               <article key={step.title} className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-subtle)] p-5">
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-[color:var(--brand-primary)] shadow-sm">
-                  {index + 1}
-                </div>
                 <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">{step.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">{step.body}</p>
               </article>
