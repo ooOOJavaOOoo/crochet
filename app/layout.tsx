@@ -39,15 +39,17 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: "Crochet Canvas",
-  title: 'Crochet Canvas — Pattern Studio for Tapestry Crochet',
+  title: 'Crochet Canvas — Turn a photo into a stitch-ready crochet chart',
   description:
-    'Crochet Canvas helps you turn any image into a polished tapestry crochet pattern with chart previews, yarn planning, and instant PDF delivery.',
+    'Turn a reference photo into a stitch-ready crochet chart with yarn-aware planning, chart previews, and instant PDF delivery.',
   keywords: [
     'crochet pattern generator',
     'tapestry crochet',
     'crochet chart maker',
     'image to crochet pattern',
     'AI crochet pattern',
+    'crochet chart from photo',
+    'photo to crochet pattern',
   ],
   alternates: {
     canonical: '/',
@@ -67,9 +69,9 @@ export const metadata: Metadata = {
     type: 'website',
     url: '/',
     siteName: 'Crochet Canvas',
-    title: 'Crochet Canvas — Pattern Studio for Tapestry Crochet',
+    title: 'Crochet Canvas — Turn a photo into a stitch-ready crochet chart',
     description:
-      'Turn any image into a polished tapestry crochet chart with yarn-aware settings, preview tools, and instant PDF delivery.',
+      'Turn a reference photo into a stitch-ready crochet chart with yarn-aware settings, preview tools, and instant PDF delivery.',
     images: [
       {
         url: '/crochet-canvas-logo.svg',
@@ -82,9 +84,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Crochet Canvas — Pattern Studio for Tapestry Crochet',
+    title: 'Crochet Canvas — Turn a photo into a stitch-ready crochet chart',
     description:
-      'Turn any image into a polished tapestry crochet chart with yarn-aware settings and instant PDF delivery.',
+      'Turn a reference photo into a stitch-ready crochet chart with yarn-aware settings and instant PDF delivery.',
     images: ['/crochet-canvas-logo.svg'],
   },
 };

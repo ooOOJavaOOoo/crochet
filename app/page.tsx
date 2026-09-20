@@ -87,15 +87,15 @@ const HERO_SWATCHES = [
 ];
 
 const CROCHET_FEATURES = [
-  'Design faster while keeping your crochet style intact.',
-  'Generate listing-ready visuals and clean chart previews.',
-  'Deliver secure instant downloads when customers are ready to buy.',
+  'Turn a photo into a chart without hand-gridding every square.',
+  'Keep your custom crochet project visually grounded in the original image.',
+  'Review a clean preview before you buy and download the full pattern.',
 ];
 
 const TRUST_POINTS = [
-  'Secure checkout and instant PDF delivery',
-  'Commercial-use friendly outputs for maker shops',
-  'Edit and regenerate before purchasing your final pattern',
+  'Built for crochet artists and custom makers',
+  'Fast preview before you commit to a full pattern',
+  'Clear yarn and chart planning for real projects',
 ];
 
 const HOW_IT_WORKS_STEPS = [
@@ -128,6 +128,24 @@ const TESTIMONIALS = [
     quote:
       'It feels like having a technical editor in my studio. The charts are cleaner than my old manual workflow.',
     author: 'Sofia, crochet instructor',
+  },
+];
+
+const SAMPLE_PATTERN_EXAMPLES = [
+  {
+    title: 'Pet portrait',
+    subtitle: 'Reference photo to custom tapestry chart',
+    palette: ['#b85c38', '#d89e58', '#35624a', '#2e5e8a'],
+  },
+  {
+    title: 'Floral wall hanging',
+    subtitle: 'Color-rich artwork with balanced yarn planning',
+    palette: ['#e76f51', '#f4a261', '#7bc8a4', '#445a7b'],
+  },
+  {
+    title: 'Keepsake blanket',
+    subtitle: 'Large-format chart with simplified stitch mapping',
+    palette: ['#c86f58', '#f2ba7c', '#6fa8a3', '#5d6d8c'],
   },
 ];
 
@@ -749,10 +767,10 @@ export default function HomePage() {
               <div className="mb-5">
                 <div className="max-w-3xl">
                   <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl lg:text-6xl">
-                    Crochet Canvas turns any image into a chart you can stitch.
+                    Turn a photo into a stitch-ready crochet chart.
                   </h1>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-[color:var(--text-secondary)] sm:text-lg">
-                    Upload artwork, tune your yarn settings, and generate polished tapestry previews ready for your next project or shop listing.
+                    Built for crochet artists and custom makers who want to transform reference photos into usable tapestry patterns, without spending hours hand-gridding every stitch.
                   </p>
                 </div>
               </div>
@@ -865,6 +883,37 @@ export default function HomePage() {
             onDismiss={() => dispatch({ type: 'SetFloatingSummaryDismissed', dismissed: true })}
           />
         )}
+
+        <section className="mt-8 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-white/70 p-6 sm:p-8">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="mono-meta text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--brand-primary)]">Sample patterns</p>
+              <h2 className="font-display mt-2 text-3xl font-semibold text-[color:var(--foreground)]">From reference image to custom crochet chart</h2>
+            </div>
+            <p className="max-w-xl text-sm leading-6 text-[color:var(--text-secondary)]">
+              These examples show the kind of results makers use for portraits, wall hangings, and custom projects before they finalize a pattern.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {SAMPLE_PATTERN_EXAMPLES.map((example) => (
+              <article key={example.title} className="overflow-hidden rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-subtle)] p-4">
+                <div className="mb-4 grid grid-cols-4 gap-2">
+                  {example.palette.map((swatch) => (
+                    <span
+                      key={`${example.title}-${swatch}`}
+                      className="block h-14 rounded-xl"
+                      style={{ backgroundColor: swatch }}
+                      aria-label={example.title}
+                    />
+                  ))}
+                </div>
+                <h3 className="font-display text-2xl font-semibold text-[color:var(--foreground)]">{example.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">{example.subtitle}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <div id="generator" className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <section className="space-y-6">
